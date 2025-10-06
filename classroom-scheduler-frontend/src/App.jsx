@@ -9,7 +9,7 @@ function App() {
 
   const handleSubmit = async (classes) => {
     try {
-      const res = await axios.post("http://127.0.0.1:5000/schedule", { classes });
+      const res = await axios.post("https://classroom-scheduler-1.onrender.com", { classes });
       setResults(res.data.results);
       setTotalRooms(res.data.total_rooms);
     } catch (error) {
