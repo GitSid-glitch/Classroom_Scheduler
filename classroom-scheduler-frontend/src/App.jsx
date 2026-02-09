@@ -1,28 +1,53 @@
-import React, { useState } from "react";
-import axios from "axios";
-import ClassInputForm from "./components/ClassInputForm";
-import ScheduleResult from "./components/ScheduleResult";
+import { useState } from "react";
+import RoomForm from "./components/RoomForm";
+import ClassForm from "./components/ClassForm";
+import ScheduleView from "./components/ScheduleView";
+import { runOptimizedSchedule } from "./api";
 
 function App() {
-  const [results, setResults] = useState(null);
-  const [totalRooms, setTotalRooms] = useState(null);
+  const [scheduleResult, setScheduleResult] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = async (classes) => {
+  const handleRunOptimized = async () => {
+    setLoading(true);
     try {
-      const res = await axios.post("https://classroom-scheduler-1.onrender.com/schedule", { classes });
-      setResults(res.data.results);
-      setTotalRooms(res.data.total_rooms);
+      const res = await runOptimizedSchedule({});
+      setScheduleResult(res.data);
     } catch (error) {
-      console.error("Backend error:", error);
-      alert("Error connecting to backend: " + error.message);
-    }    
+      console.error("Error running schedule:", error);
+      alert("Error running schedule");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div style={{ padding: "30px", fontFamily: "Arial" }}>
-      <h1>📅 Smart Classroom Scheduler</h1>
-      <ClassInputForm onSubmit={handleSubmit} />
-      {results && <ScheduleResult results={results} totalRooms={totalRooms} />}
+    <div style={{ fontFamily: "Arial", margin: "20px" }}>
+      <h1>🎓 Classroom Scheduler (DP + Heap)</h1>
+      <p>Create rooms, add class sessions, and run the optimized scheduler!</p>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+        <RoomForm />
+        <ClassForm />
+      </div>
+
+      <button
+        onClick={handleRunOptimized}
+        disabled={loading}
+        style={{
+          padding: "10px 20px",
+          fontSize: "16px",
+          backgroundColor: "#007bff",
+          color: "white",
+          border: "none",
+          cursor: "pointer",
+          marginBottom: "20px",
+        }}
+      >
+        {loading ? "Running..." : "Run Optimized Schedule (DP + Heap)"}
+      </button>
+
+      <ScheduleView scheduleResult={scheduleResult} />
     </div>
   );
 }
