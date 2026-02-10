@@ -32,7 +32,7 @@ function App() {
   const handleRunOptimized = async () => {
     setLoading(true);
     try {
-      const res = await runSchedule(true); // true for DP mode
+      const res = await runSchedule(); 
       setScheduleResult(res);
     } catch (error) {
       console.error("Error running schedule:", error);
