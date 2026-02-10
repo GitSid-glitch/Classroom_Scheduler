@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { createRoom } from "../api";
 
-export default function RoomForm({ onCreated }) {
+export default function RoomForm({ onCreated, existingRooms }) {
   const [form, setForm] = useState({
-    name: "",
+    room_number: "",
     capacity: "",
     room_type: "THEORY",
   });
@@ -15,28 +15,41 @@ export default function RoomForm({ onCreated }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    const isDuplicate = existingRooms?.some(
+      room => room.room_number === form.room_number
+    );
+    
+    if (isDuplicate) {
+      alert(`Error: Room ${form.room_number} already exists! Please use a different room number.`);
+      return;
+    }
+
     try {
       await createRoom({
         ...form,
         capacity: parseInt(form.capacity),
       });
-      alert("Room created!");
-      setForm({ name: "", capacity: "", room_type: "THEORY" });
+      setForm({
+        room_number: "",
+        capacity: "",
+        room_type: "THEORY",
+      });
       onCreated?.();
     } catch (error) {
       console.error("Error creating room:", error);
-      alert("Error creating room");
+      alert(error.message || "Error creating room");
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} style={{ border: "1px solid #ccc", padding: "20px", marginBottom: "20px" }}>
+    <form onSubmit={handleSubmit} style={{ border: "1px solid #ccc", padding: "20px" }}>
       <h3>Add Room</h3>
       <input
         type="text"
-        name="name"
-        placeholder="Room Name (e.g., 101)"
-        value={form.name}
+        name="room_number"
+        placeholder="Room Number"
+        value={form.room_number}
         onChange={handleChange}
         required
       />

@@ -1,19 +1,53 @@
-import axios from "axios";
-const API_BASE = "http://127.0.0.1:8000/api";
-export const createRoom = (data) =>
-  axios.post(`${API_BASE}/rooms/`, data);
+const API_BASE = "http://localhost:8000/api";
 
-export const listRooms = () =>
-  axios.get(`${API_BASE}/rooms/`);
+export async function createRoom(data) {
+  const res = await fetch(`${API_BASE}/rooms/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.detail || "Failed to create room");
+  }
+  return res.json();
+}
 
-export const createClassSession = (data) =>
-  axios.post(`${API_BASE}/classes/`, data);
+export async function getRooms() {
+  const res = await fetch(`${API_BASE}/rooms/`);
+  if (!res.ok) throw new Error("Failed to fetch rooms");
+  return res.json();
+}
 
-export const listClassSessions = () =>
-  axios.get(`${API_BASE}/classes/`);
+export async function createClassSession(data) {
+  const res = await fetch(`${API_BASE}/classes/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.detail || "Failed to create class");
+  }
+  return res.json();
+}
 
-export const runOptimizedSchedule = (filters = {}) =>
-  axios.post(`${API_BASE}/schedules/run_optimized/`, filters);
+export async function getClasses() {
+  const res = await fetch(`${API_BASE}/classes/`);
+  if (!res.ok) throw new Error("Failed to fetch classes");
+  return res.json();
+}
 
-export const listSchedules = () =>
-  axios.get(`${API_BASE}/schedules/`);
+export async function runSchedule(teacher = null, batch = null) {
+  const body = {};
+  if (teacher) body.teacher = teacher;
+  if (batch) body.batch = batch;
+  
+  const res = await fetch(`${API_BASE}/schedules/run_optimized/`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error("Failed to run schedule");
+  return res.json();
+}
