@@ -48,6 +48,8 @@ class ScheduleViewSet(viewsets.ReadOnlyModelViewSet):
             }
             for s in sessions
         ]
+        print(f"DEBUG: Found {len(sessions)} sessions")
+        print(f"DEBUG: data_for_dp = {data_for_dp}")
 
         dp_result = weighted_interval_schedule(data_for_dp)
         chosen_ids = set(dp_result["chosen_ids"])

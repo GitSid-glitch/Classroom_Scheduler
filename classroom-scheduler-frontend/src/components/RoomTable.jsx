@@ -6,7 +6,7 @@ export default function RoomTable({ rooms }) {
         </div>
       );
     }
-  
+    
     return (
       <div style={{ padding: "20px" }}>
         <h3 style={{ marginBottom: "15px", color: "#333" }}>Added Rooms</h3>
@@ -32,8 +32,8 @@ export default function RoomTable({ rooms }) {
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f0f0f0"}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = index % 2 === 0 ? "#f9f9f9" : "#fff"}
               >
-                <td style={{ padding: "12px", borderBottom: "1px solid #ddd" }}>{room.name}</td>  
-                <td style={{ padding: "12px", borderBottom: "1px solid #ddd" }}>{room.capacity}</td>
+                <td style={{ padding: "12px", borderBottom: "1px solid #ddd", color: "#333" }}>{room.name}</td> 
+                <td style={{ padding: "12px", borderBottom: "1px solid #ddd", color: "#333" }}>{room.capacity}</td>
                 <td style={{ padding: "12px", borderBottom: "1px solid #ddd" }}>
                   <span style={{
                     padding: "4px 8px",

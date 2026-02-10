@@ -6,7 +6,7 @@ export default function ClassTable({ classes }) {
         </div>
       );
     }
-  
+    
     return (
       <div style={{ padding: "20px" }}>
         <h3 style={{ marginBottom: "15px", color: "#333" }}>Added Class Sessions</h3>
@@ -36,14 +36,14 @@ export default function ClassTable({ classes }) {
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f0f0f0"}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = index % 2 === 0 ? "#f9f9f9" : "#fff"}
               >
-                <td style={{ padding: "12px", borderBottom: "1px solid #ddd", fontWeight: "bold" }}>{cls.subject}</td>
-                <td style={{ padding: "12px", borderBottom: "1px solid #ddd" }}>{cls.teacher}</td>
-                <td style={{ padding: "12px", borderBottom: "1px solid #ddd" }}>{cls.batch}</td>
-                <td style={{ padding: "12px", borderBottom: "1px solid #ddd" }}>{cls.day_of_week}</td>
-                <td style={{ padding: "12px", borderBottom: "1px solid #ddd" }}>
+                <td style={{ padding: "12px", borderBottom: "1px solid #ddd", fontWeight: "bold", color: "#333" }}>{cls.subject}</td>
+                <td style={{ padding: "12px", borderBottom: "1px solid #ddd", color: "#333" }}>{cls.teacher}</td>
+                <td style={{ padding: "12px", borderBottom: "1px solid #ddd", color: "#333" }}>{cls.batch}</td>
+                <td style={{ padding: "12px", borderBottom: "1px solid #ddd", color: "#333" }}>{cls.day_of_week}</td>
+                <td style={{ padding: "12px", borderBottom: "1px solid #ddd", color: "#333" }}>
                   {cls.start_time} - {cls.end_time}
                 </td>
-                <td style={{ padding: "12px", borderBottom: "1px solid #ddd" }}>{cls.required_capacity}</td>
+                <td style={{ padding: "12px", borderBottom: "1px solid #ddd", color: "#333" }}>{cls.required_capacity}</td>
                 <td style={{ padding: "12px", borderBottom: "1px solid #ddd" }}>
                   <span style={{
                     padding: "4px 8px",
