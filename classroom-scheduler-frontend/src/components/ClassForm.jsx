@@ -81,20 +81,37 @@ export default function ClassForm({ onCreated }) {
         <option value="FRI">Friday</option>
         <option value="SAT">Saturday</option>
       </select>
-      <input
-        type="time"
-        name="start_time"
-        value={form.start_time}
-        onChange={handleChange}
-        required
-      />
-      <input
-        type="time"
-        name="end_time"
-        value={form.end_time}
-        onChange={handleChange}
-        required
-      />
+      
+      <div style={{ marginTop: "10px" }}>
+        <label htmlFor="start_time" style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}>
+          Start Time:
+        </label>
+        <input
+          id="start_time"
+          type="time"
+          name="start_time"
+          value={form.start_time}
+          onChange={handleChange}
+          required
+          style={{ width: "100%", padding: "8px", fontSize: "14px" }}
+        />
+      </div>
+      
+      <div style={{ marginTop: "10px" }}>
+        <label htmlFor="end_time" style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}>
+          End Time:
+        </label>
+        <input
+          id="end_time"
+          type="time"
+          name="end_time"
+          value={form.end_time}
+          onChange={handleChange}
+          required
+          style={{ width: "100%", padding: "8px", fontSize: "14px" }}
+        />
+      </div>
+      
       <input
         type="number"
         name="required_capacity"
@@ -107,15 +124,24 @@ export default function ClassForm({ onCreated }) {
         <option value="THEORY">Theory</option>
         <option value="LAB">Lab</option>
       </select>
-      <input
-        type="number"
-        name="value"
-        placeholder="Priority (1-10)"
-        value={form.value}
-        onChange={handleChange}
-        min={1}
-        max={10}
-      />
+      
+      <div style={{ marginTop: "10px" }}>
+        <label htmlFor="priority" style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}>
+          Priority (1-10):
+        </label>
+        <input
+          id="priority"
+          type="number"
+          name="value"
+          placeholder="Priority (1-10)"
+          value={form.value}
+          onChange={handleChange}
+          min={1}
+          max={10}
+          style={{ width: "100%", padding: "10px", fontSize: "16px" }}
+        />
+      </div>
+      
       <button type="submit">Add Class</button>
     </form>
   );
