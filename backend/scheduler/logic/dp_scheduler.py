@@ -2,7 +2,7 @@ from typing import List, Dict, Any
 import bisect
 def weighted_interval_schedule(sessions: List[Dict[str, Any]]) -> Dict[str, Any]:
     if not sessions:
-        return {"max_value": 0, "idx": []}
+        return {"max_value": 0, "chosen_ids": []}
     sorted_sessions = sorted(sessions, key = lambda x: x["end"])
     n = len(sorted_sessions)
     ends = []

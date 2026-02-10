@@ -3,7 +3,7 @@ import { createRoom } from "../api";
 
 export default function RoomForm({ onCreated, existingRooms }) {
   const [form, setForm] = useState({
-    room_number: "",
+    name: "",  
     capacity: "",
     room_type: "THEORY",
   });
@@ -17,11 +17,11 @@ export default function RoomForm({ onCreated, existingRooms }) {
     e.preventDefault();
     
     const isDuplicate = existingRooms?.some(
-      room => room.room_number === form.room_number
+      room => room.name === form.name  
     );
     
     if (isDuplicate) {
-      alert(`Error: Room ${form.room_number} already exists! Please use a different room number.`);
+      alert(`Error: Room ${form.name} already exists! Please use a different room name.`);
       return;
     }
 
@@ -31,7 +31,7 @@ export default function RoomForm({ onCreated, existingRooms }) {
         capacity: parseInt(form.capacity),
       });
       setForm({
-        room_number: "",
+        name: "",  
         capacity: "",
         room_type: "THEORY",
       });
@@ -47,9 +47,9 @@ export default function RoomForm({ onCreated, existingRooms }) {
       <h3>Add Room</h3>
       <input
         type="text"
-        name="room_number"
+        name="name"  
         placeholder="Room Number"
-        value={form.room_number}
+        value={form.name}  
         onChange={handleChange}
         required
       />
