@@ -40,5 +40,5 @@ def weighted_interval_schedule(sessions: List[Dict[str, Any]]) -> Dict[str, Any]
     idx.reverse()
     return {
         "max_value": dp[n],
-        "idx": idx,
+        "chosen_ids": idx,
     }
