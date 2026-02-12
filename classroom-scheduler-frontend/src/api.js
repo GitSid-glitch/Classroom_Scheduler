@@ -1,5 +1,5 @@
 // const API_BASE = "http://localhost:8000/api";
-const API_BASE = import.meta.env.VITE_API_URL || "https://classroom-scheduler-backend.onrender.com/api";
+const API_BASE = import.meta.env.VITE_API_URL
 
 export async function createRoom(data) {
   const res = await fetch(`${API_BASE}/rooms/`, {
