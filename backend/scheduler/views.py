@@ -2,216 +2,296 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from .models import Room, ClassSession, Schedule, Assignment
-from .serializers import RoomSerializer, ClassSessionSerializer, ScheduleSerializer
-from .logic.heap_scheduler import schedule_classes_min_rooms
-from .logic.dp_scheduler import weighted_interval_schedule
-import pandas as pd
-from io import StringIO
+from .serializers import RoomSerializer, ClassSessionSerializer, ScheduleSerializer, AssignmentSerializer
+from django.utils import timezone
+import heapq
 
 
 class RoomViewSet(viewsets.ModelViewSet):
     queryset = Room.objects.all()
     serializer_class = RoomSerializer
-    
-    @action(detail=False, methods=["post"])
-    def upload(self, request):
-        """Upload rooms from CSV file"""
-        if 'file' not in request.FILES:
-            return Response({"detail": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
-        
-        file = request.FILES['file']
-        
-        try:
-            decoded_file = file.read().decode('utf-8')
-            csv_data = StringIO(decoded_file)
-            df = pd.read_csv(csv_data)
-            required_cols = ['name', 'capacity', 'room_type']
-            if not all(col in df.columns for col in required_cols):
-                return Response(
-                    {"detail": f"CSV must have columns: {', '.join(required_cols)}"},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            
-            created = 0
-            updated = 0
-            failed = 0
-            
-            for _, row in df.iterrows():
-                try:
-                    room, created_flag = Room.objects.update_or_create(
-                        name=str(row['name']),
-                        defaults={
-                            'capacity': int(row['capacity']),
-                            'room_type': str(row['room_type']).upper()
-                        }
-                    )
-                    if created_flag:
-                        created += 1
-                    else:
-                        updated += 1
-                except Exception as e:
-                    print(f"Error processing row: {row}, Error: {e}")
-                    failed += 1
-            
-            return Response({
-                "created": created,
-                "updated": updated,
-                "failed": failed,
-                "total": len(df)
-            }, status=status.HTTP_201_CREATED)
-            
-        except Exception as e:
-            return Response(
-                {"detail": f"Error processing CSV: {str(e)}"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
 
 
 class ClassSessionViewSet(viewsets.ModelViewSet):
     queryset = ClassSession.objects.all()
     serializer_class = ClassSessionSerializer
-    
-    @action(detail=False, methods=["post"])
-    def upload(self, request):
-        """Upload class sessions from CSV file"""
-        if 'file' not in request.FILES:
-            return Response({"detail": "No file provided"}, status=status.HTTP_400_BAD_REQUEST)
-        
-        file = request.FILES['file']
-        
-        try:
-            decoded_file = file.read().decode('utf-8')
-            csv_data = StringIO(decoded_file)
-            df = pd.read_csv(csv_data)
-            
-            required_cols = ['subject', 'teacher', 'batch', 'day_of_week', 
-                           'start_time', 'end_time', 'required_capacity', 
-                           'required_type', 'value']
-            
-            if not all(col in df.columns for col in required_cols):
-                return Response(
-                    {"detail": f"CSV must have columns: {', '.join(required_cols)}"},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            
-            created = 0
-            updated = 0
-            failed = 0
-            
-            for _, row in df.iterrows():
-                try:
-                    class_session, created_flag = ClassSession.objects.update_or_create(
-                        subject=str(row['subject']),
-                        teacher=str(row['teacher']),
-                        batch=str(row['batch']),
-                        day_of_week=str(row['day_of_week']).upper(),
-                        start_time=str(row['start_time']),
-                        defaults={
-                            'end_time': str(row['end_time']),
-                            'required_capacity': int(row['required_capacity']),
-                            'required_type': str(row['required_type']).upper(),
-                            'value': int(row['value'])
-                        }
-                    )
-                    if created_flag:
-                        created += 1
-                    else:
-                        updated += 1
-                except Exception as e:
-                    print(f"Error processing row: {row}, Error: {e}")
-                    failed += 1
-            
-            return Response({
-                "created": created,
-                "updated": updated,
-                "failed": failed,
-                "total": len(df)
-            }, status=status.HTTP_201_CREATED)
-            
-        except Exception as e:
-            return Response(
-                {"detail": f"Error processing CSV: {str(e)}"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
 
 
-class ScheduleViewSet(viewsets.ReadOnlyModelViewSet):
+class ScheduleViewSet(viewsets.ModelViewSet):
     queryset = Schedule.objects.all()
     serializer_class = ScheduleSerializer
-    
+
     @action(detail=False, methods=["post"])
     def run_optimized(self, request):
-        """
-        Combined DP + heap:
-        1. Use DP to choose best subset of classes (max value, no overlaps).
-        2. Use heap to assign min number of rooms to those chosen classes.
-        """
-        teacher = request.data.get("teacher")
-        batch = request.data.get("batch")
-        
-        qs = ClassSession.objects.all()
-        if teacher:
-            qs = qs.filter(teacher=teacher)
-        if batch:
-            qs = qs.filter(batch=batch)
-        
-        sessions = list(qs)
-        data_for_dp = [
-            {
-                "id": s.id,
-                "start": int(s.start_time.strftime("%H%M")),
-                "end": int(s.end_time.strftime("%H%M")),
-                "value": s.value,
-            }
-            for s in sessions
-        ]
-        
-        print(f"DEBUG: Found {len(sessions)} sessions")
-        print(f"DEBUG: data_for_dp = {data_for_dp}")
-        
-        dp_result = weighted_interval_schedule(data_for_dp)
-        chosen_ids = set(dp_result["chosen_ids"])
-        
-        chosen_sessions = [s for s in sessions if s.id in chosen_ids]
-        data_for_heap = [
-            {
-                "id": s.id,
-                "start": int(s.start_time.strftime("%H%M")),
-                "end": int(s.end_time.strftime("%H%M")),
-            }
-            for s in chosen_sessions
-        ]
-        
-        heap_result = schedule_classes_min_rooms(data_for_heap)
-        
-        schedule = Schedule.objects.create(name="DP + Heap schedule")
-        room_cache = {}
-        
-        for a in heap_result["assignments"]:
-            class_session = ClassSession.objects.get(id=a["class_id"])
-            idx = a["room_index"]
-            room_name = f"Room {idx + 1}"
+        try:
+            rooms = list(Room.objects.all())
+            classes = list(ClassSession.objects.all())
             
-            if idx not in room_cache:
-                room_obj, _ = Room.objects.get_or_create(
-                    name=room_name,
-                    defaults={"capacity": 0, "room_type": "THEORY"},
-                )
-                room_cache[idx] = room_obj
+            if not rooms:
+                return Response({"error": "No rooms available"}, status=status.HTTP_400_BAD_REQUEST)
             
-            room = room_cache[idx]
-            Assignment.objects.create(
-                schedule=schedule,
-                class_session=class_session,
-                room=room,
+            if not classes:
+                return Response({"error": "No classes to schedule"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            classes_by_day = {}
+            for cls in classes:
+                day = cls.day_of_week
+                if day not in classes_by_day:
+                    classes_by_day[day] = []
+                classes_by_day[day].append(cls)
+            
+            selected_classes = []
+            total_value = 0
+            
+            for day, day_classes in classes_by_day.items():
+                sorted_classes = sorted(day_classes, key=lambda x: x.end_time)
+                n = len(sorted_classes)
+                
+                if n == 0:
+                    continue
+                
+                dp = [0] * (n + 1)
+                selected = [[] for _ in range(n + 1)]
+                
+                for i in range(1, n + 1):
+                    current_class = sorted_classes[i-1]
+                    
+                    dp[i] = dp[i-1]
+                    selected[i] = selected[i-1].copy()
+                    
+                    latest_non_overlapping = 0
+                    for j in range(i-1, 0, -1):
+                        prev_class = sorted_classes[j-1]
+                        if prev_class.end_time <= current_class.start_time:
+                            latest_non_overlapping = j
+                            break
+                    
+                    include_value = dp[latest_non_overlapping] + current_class.priority
+                    
+                    if include_value > dp[i]:
+                        dp[i] = include_value
+                        selected[i] = selected[latest_non_overlapping].copy()
+                        selected[i].append(current_class)
+                
+                selected_classes.extend(selected[n])
+                total_value += dp[n]
+            
+            if not selected_classes:
+                selected_classes = classes
+                total_value = sum(cls.priority for cls in classes)
+            
+            selected_by_day = {}
+            for cls in selected_classes:
+                day = cls.day_of_week
+                if day not in selected_by_day:
+                    selected_by_day[day] = []
+                selected_by_day[day].append(cls)
+            
+            max_concurrent_rooms = 0
+            room_assignments = []
+            
+            for day, day_classes in selected_by_day.items():
+                events = []
+                for cls in day_classes:
+                    events.append((cls.start_time, 'start', cls))
+                    events.append((cls.end_time, 'end', cls))
+                
+                events.sort(key=lambda x: (x[0], 0 if x[1] == 'end' else 1))
+                
+                concurrent = 0
+                max_concurrent_this_day = 0
+                
+                for time, event_type, cls in events:
+                    if event_type == 'start':
+                        concurrent += 1
+                        max_concurrent_this_day = max(max_concurrent_this_day, concurrent)
+                    else:
+                        concurrent -= 1
+                
+                max_concurrent_rooms = max(max_concurrent_rooms, max_concurrent_this_day)
+                
+                sorted_day_classes = sorted(day_classes, key=lambda x: x.start_time)
+                room_heap = []
+                available_rooms = rooms.copy()
+                
+                for cls in sorted_day_classes:
+                    while room_heap and room_heap[0][0] <= cls.start_time:
+                        _, freed_room = heapq.heappop(room_heap)
+                        if freed_room not in available_rooms:
+                            available_rooms.append(freed_room)
+                    
+                    assigned_room = None
+                    for i, room in enumerate(available_rooms):
+                        if room.capacity >= cls.required_capacity:
+                            if cls.required_type == 'ANY' or room.room_type == cls.required_type:
+                                assigned_room = available_rooms.pop(i)
+                                break
+                    
+                    if assigned_room:
+                        room_assignments.append({
+                            'class': cls,
+                            'room': assigned_room.id
+                        })
+                        heapq.heappush(room_heap, (cls.end_time, assigned_room))
+            
+            rooms_needed = max_concurrent_rooms
+            
+            schedule = Schedule.objects.create(
+                name="DP + Heap schedule",
+                max_value=int(total_value),
+                min_rooms=rooms_needed
             )
-        
-        serializer = self.get_serializer(schedule)
-        return Response(
-            {
-                "max_value": dp_result["max_value"],
-                "min_rooms": heap_result["min_rooms"],
-                "schedule": serializer.data,
-            },
-            status=status.HTTP_201_CREATED,
-        )
+            
+            for assignment in room_assignments:
+                Assignment.objects.create(
+                    schedule=schedule,
+                    class_session=assignment['class'],
+                    room_id=assignment['room']
+                )
+            
+            serializer = ScheduleSerializer(schedule)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=["post"])
+    def run_dp(self, request):
+        try:
+            classes = list(ClassSession.objects.all())
+            rooms = list(Room.objects.all())
+            
+            if not classes or not rooms:
+                return Response({"error": "Need classes and rooms"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            classes_by_day = {}
+            for cls in classes:
+                if cls.day_of_week not in classes_by_day:
+                    classes_by_day[cls.day_of_week] = []
+                classes_by_day[cls.day_of_week].append(cls)
+            
+            selected_classes = []
+            total_value = 0
+            
+            for day, day_classes in classes_by_day.items():
+                sorted_classes = sorted(day_classes, key=lambda x: x.end_time)
+                n = len(sorted_classes)
+                
+                dp = [0] * (n + 1)
+                selected = [[] for _ in range(n + 1)]
+                
+                for i in range(1, n + 1):
+                    current = sorted_classes[i-1]
+                    dp[i] = dp[i-1]
+                    selected[i] = selected[i-1].copy()
+                    
+                    latest = 0
+                    for j in range(i-1, 0, -1):
+                        if sorted_classes[j-1].end_time <= current.start_time:
+                            latest = j
+                            break
+                    
+                    if dp[latest] + current.priority > dp[i]:
+                        dp[i] = dp[latest] + current.priority
+                        selected[i] = selected[latest].copy()
+                        selected[i].append(current)
+                
+                selected_classes.extend(selected[n])
+                total_value += dp[n]
+            
+            schedule = Schedule.objects.create(
+                name="DP schedule",
+                max_value=int(total_value),
+                min_rooms=1
+            )
+            
+            for cls in selected_classes:
+                suitable_room = None
+                for room in rooms:
+                    if room.capacity >= cls.required_capacity:
+                        if cls.required_type == 'ANY' or room.room_type == cls.required_type:
+                            suitable_room = room
+                            break
+                
+                if suitable_room:
+                    Assignment.objects.create(
+                        schedule=schedule,
+                        class_session=cls,
+                        room=suitable_room
+                    )
+            
+            serializer = ScheduleSerializer(schedule)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=["post"])
+    def run_heap(self, request):
+        try:
+            classes = list(ClassSession.objects.all())
+            rooms = list(Room.objects.all())
+            
+            if not classes or not rooms:
+                return Response({"error": "Need classes and rooms"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            classes_by_day = {}
+            for cls in classes:
+                if cls.day_of_week not in classes_by_day:
+                    classes_by_day[cls.day_of_week] = []
+                classes_by_day[cls.day_of_week].append(cls)
+            
+            max_rooms = 0
+            assignments = []
+            total_value = 0
+            
+            for day, day_classes in classes_by_day.items():
+                sorted_classes = sorted(day_classes, key=lambda x: x.start_time)
+                room_heap = []
+                available_rooms = rooms.copy()
+                
+                for cls in sorted_classes:
+                    while room_heap and room_heap[0][0] <= cls.start_time:
+                        _, freed_room = heapq.heappop(room_heap)
+                        if freed_room not in available_rooms:
+                            available_rooms.append(freed_room)
+                    
+                    assigned_room = None
+                    for i, room in enumerate(available_rooms):
+                        if room.capacity >= cls.required_capacity:
+                            if cls.required_type == 'ANY' or room.room_type == cls.required_type:
+                                assigned_room = available_rooms.pop(i)
+                                break
+                    
+                    if assigned_room:
+                        assignments.append({'class': cls, 'room': assigned_room.id})
+                        heapq.heappush(room_heap, (cls.end_time, assigned_room))
+                        total_value += cls.priority
+                
+                max_rooms = max(max_rooms, len(room_heap))
+            
+            schedule = Schedule.objects.create(
+                name="Heap schedule",
+                max_value=int(total_value),
+                min_rooms=max_rooms
+            )
+            
+            for assignment in assignments:
+                Assignment.objects.create(
+                    schedule=schedule,
+                    class_session=assignment['class'],
+                    room_id=assignment['room']
+                )
+            
+            serializer = ScheduleSerializer(schedule)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class AssignmentViewSet(viewsets.ModelViewSet):
+    queryset = Assignment.objects.all()
+    serializer_class = AssignmentSerializer
