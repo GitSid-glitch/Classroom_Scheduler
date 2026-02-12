@@ -51,3 +51,29 @@ export async function runSchedule(teacher = null, batch = null) {
   if (!res.ok) throw new Error("Failed to run schedule");
   return res.json();
 }
+
+
+export async function uploadRoomsCSV(formData) {
+    const res = await fetch(`${API_BASE}/rooms/upload/`, {
+      method: "POST",
+      body: formData,
+    });
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.detail || "Failed to upload rooms CSV");
+    }
+    return res.json();
+  }
+  
+  export async function uploadClassesCSV(formData) {
+    const res = await fetch(`${API_BASE}/classes/upload/`, {
+      method: "POST",
+      body: formData,
+    });
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.detail || "Failed to upload classes CSV");
+    }
+    return res.json();
+  }
+  
