@@ -25,4 +25,4 @@ class ScheduleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Schedule
-        fields = ["id", "name", "created_at", "assignments"]
+        fields = ["id", "name", "created_at", "max_value", "min_rooms", "assignments"]
