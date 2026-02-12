@@ -50,7 +50,8 @@ class ClassSession(models.Model):
 class Schedule(models.Model):
     name = models.CharField(max_length=100, default="Auto schedule")
     created_at = models.DateTimeField(auto_now_add=True)
-
+    max_value = models.IntegerField(default=0) 
+    min_rooms = models.IntegerField(default=0) 
     def __str__(self):
         return f"{self.name} @ {self.created_at}"
 class Assignment(models.Model):

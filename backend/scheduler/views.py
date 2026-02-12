@@ -66,7 +66,7 @@ class ScheduleViewSet(viewsets.ModelViewSet):
                             latest_non_overlapping = j
                             break
                     
-                    include_value = dp[latest_non_overlapping] + current_class.priority
+                    include_value = dp[latest_non_overlapping] + current_class.value
                     
                     if include_value > dp[i]:
                         dp[i] = include_value
@@ -78,7 +78,7 @@ class ScheduleViewSet(viewsets.ModelViewSet):
             
             if not selected_classes:
                 selected_classes = classes
-                total_value = sum(cls.priority for cls in classes)
+                total_value = sum(cls.value for cls in classes)
             
             selected_by_day = {}
             for cls in selected_classes:
@@ -193,8 +193,8 @@ class ScheduleViewSet(viewsets.ModelViewSet):
                             latest = j
                             break
                     
-                    if dp[latest] + current.priority > dp[i]:
-                        dp[i] = dp[latest] + current.priority
+                    if dp[latest] + current.value > dp[i]:
+                        dp[i] = dp[latest] + current.value
                         selected[i] = selected[latest].copy()
                         selected[i].append(current)
                 
@@ -268,7 +268,7 @@ class ScheduleViewSet(viewsets.ModelViewSet):
                     if assigned_room:
                         assignments.append({'class': cls, 'room': assigned_room.id})
                         heapq.heappush(room_heap, (cls.end_time, assigned_room))
-                        total_value += cls.priority
+                        total_value += cls.value
                 
                 max_rooms = max(max_rooms, len(room_heap))
             
