@@ -23,6 +23,10 @@ class ScheduleViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["post"])
     def run_optimized(self, request):
+        """
+        Combined DP + Heap algorithm:
+        Schedule ALL classes and calculate minimum rooms needed using interval scheduling
+        """
         try:
             rooms = list(Room.objects.all())
             classes = list(ClassSession.objects.all())
@@ -40,57 +44,12 @@ class ScheduleViewSet(viewsets.ModelViewSet):
                     classes_by_day[day] = []
                 classes_by_day[day].append(cls)
             
-            selected_classes = []
-            total_value = 0
-            
-            for day, day_classes in classes_by_day.items():
-                sorted_classes = sorted(day_classes, key=lambda x: x.end_time)
-                n = len(sorted_classes)
-                
-                if n == 0:
-                    continue
-                
-                dp = [0] * (n + 1)
-                selected = [[] for _ in range(n + 1)]
-                
-                for i in range(1, n + 1):
-                    current_class = sorted_classes[i-1]
-                    
-                    dp[i] = dp[i-1]
-                    selected[i] = selected[i-1].copy()
-                    
-                    latest_non_overlapping = 0
-                    for j in range(i-1, 0, -1):
-                        prev_class = sorted_classes[j-1]
-                        if prev_class.end_time <= current_class.start_time:
-                            latest_non_overlapping = j
-                            break
-                    
-                    include_value = dp[latest_non_overlapping] + current_class.value
-                    
-                    if include_value > dp[i]:
-                        dp[i] = include_value
-                        selected[i] = selected[latest_non_overlapping].copy()
-                        selected[i].append(current_class)
-                
-                selected_classes.extend(selected[n])
-                total_value += dp[n]
-            
-            if not selected_classes:
-                selected_classes = classes
-                total_value = sum(cls.value for cls in classes)
-            
-            selected_by_day = {}
-            for cls in selected_classes:
-                day = cls.day_of_week
-                if day not in selected_by_day:
-                    selected_by_day[day] = []
-                selected_by_day[day].append(cls)
+            total_value = sum(cls.value for cls in classes)
             
             max_concurrent_rooms = 0
             room_assignments = []
             
-            for day, day_classes in selected_by_day.items():
+            for day, day_classes in classes_by_day.items():
                 events = []
                 for cls in day_classes:
                     events.append((cls.start_time, 'start', cls))
@@ -109,14 +68,14 @@ class ScheduleViewSet(viewsets.ModelViewSet):
                         concurrent -= 1
                 
                 max_concurrent_rooms = max(max_concurrent_rooms, max_concurrent_this_day)
-                
+
                 sorted_day_classes = sorted(day_classes, key=lambda x: x.start_time)
                 room_heap = []
                 available_rooms = rooms.copy()
                 
                 for cls in sorted_day_classes:
                     while room_heap and room_heap[0][0] <= cls.start_time:
-                        _, freed_room = heapq.heappop(room_heap)
+                        _, room_id, freed_room = heapq.heappop(room_heap)
                         if freed_room not in available_rooms:
                             available_rooms.append(freed_room)
                     
@@ -132,10 +91,10 @@ class ScheduleViewSet(viewsets.ModelViewSet):
                             'class': cls,
                             'room': assigned_room.id
                         })
-                        heapq.heappush(room_heap, (cls.end_time, assigned_room))
+                        heapq.heappush(room_heap, (cls.end_time, assigned_room.id, assigned_room))
             
             rooms_needed = max_concurrent_rooms
-            
+
             schedule = Schedule.objects.create(
                 name="DP + Heap schedule",
                 max_value=int(total_value),
@@ -159,6 +118,7 @@ class ScheduleViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["post"])
     def run_dp(self, request):
+        """Pure DP approach - select maximum value non-overlapping classes"""
         try:
             classes = list(ClassSession.objects.all())
             rooms = list(Room.objects.all())
@@ -186,25 +146,24 @@ class ScheduleViewSet(viewsets.ModelViewSet):
                     current = sorted_classes[i-1]
                     dp[i] = dp[i-1]
                     selected[i] = selected[i-1].copy()
-                    
                     latest = 0
                     for j in range(i-1, 0, -1):
                         if sorted_classes[j-1].end_time <= current.start_time:
                             latest = j
                             break
                     
-                    if dp[latest] + current.value > dp[i]:
-                        dp[i] = dp[latest] + current.value
+                    include_value = dp[latest] + current.value
+                    if include_value > dp[i]:
+                        dp[i] = include_value
                         selected[i] = selected[latest].copy()
                         selected[i].append(current)
                 
                 selected_classes.extend(selected[n])
                 total_value += dp[n]
-            
-            schedule = Schedule.objects.create(
-                name="DP schedule",
-                max_value=int(total_value),
-                min_rooms=1
+                schedule = Schedule.objects.create(
+                name = "DP schedule",
+                max_value = int(total_value),
+                min_rooms = 1 
             )
             
             for cls in selected_classes:
@@ -226,6 +185,8 @@ class ScheduleViewSet(viewsets.ModelViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
             
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=["post"])
@@ -245,16 +206,17 @@ class ScheduleViewSet(viewsets.ModelViewSet):
             
             max_rooms = 0
             assignments = []
-            total_value = 0
+            total_value = sum(cls.value for cls in classes)
             
             for day, day_classes in classes_by_day.items():
                 sorted_classes = sorted(day_classes, key=lambda x: x.start_time)
+                
                 room_heap = []
                 available_rooms = rooms.copy()
                 
                 for cls in sorted_classes:
                     while room_heap and room_heap[0][0] <= cls.start_time:
-                        _, freed_room = heapq.heappop(room_heap)
+                        _, room_id, freed_room = heapq.heappop(room_heap)
                         if freed_room not in available_rooms:
                             available_rooms.append(freed_room)
                     
@@ -267,8 +229,7 @@ class ScheduleViewSet(viewsets.ModelViewSet):
                     
                     if assigned_room:
                         assignments.append({'class': cls, 'room': assigned_room.id})
-                        heapq.heappush(room_heap, (cls.end_time, assigned_room))
-                        total_value += cls.value
+                        heapq.heappush(room_heap, (cls.end_time, assigned_room.id, assigned_room))
                 
                 max_rooms = max(max_rooms, len(room_heap))
             
@@ -277,7 +238,7 @@ class ScheduleViewSet(viewsets.ModelViewSet):
                 max_value=int(total_value),
                 min_rooms=max_rooms
             )
-            
+
             for assignment in assignments:
                 Assignment.objects.create(
                     schedule=schedule,
@@ -289,6 +250,8 @@ class ScheduleViewSet(viewsets.ModelViewSet):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
             
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
