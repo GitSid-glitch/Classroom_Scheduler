@@ -43,29 +43,36 @@ export default function RoomForm({ onCreated, existingRooms }) {
   };
 
   return (
-    <form onSubmit={handleSubmit} style={{ border: "1px solid #ccc", padding: "20px" }}>
-      <h3>Add Room</h3>
+    <form onSubmit={handleSubmit} className="glass-panel" style={{ marginBottom: "20px" }}>
+      <h3 className="text-gradient" style={{ marginBottom: "20px", fontSize: "1.5rem" }}>🏢 Add Room</h3>
+      
+      <label>Room Number</label>
       <input
         type="text"
         name="name"  
-        placeholder="Room Number"
+        placeholder="e.g. 101"
         value={form.name}  
         onChange={handleChange}
         required
       />
+      
+      <label>Capacity</label>
       <input
         type="number"
         name="capacity"
-        placeholder="Capacity"
+        placeholder="e.g. 50"
         value={form.capacity}
         onChange={handleChange}
         required
       />
+      
+      <label>Room Type</label>
       <select name="room_type" value={form.room_type} onChange={handleChange}>
         <option value="THEORY">Theory</option>
         <option value="LAB">Lab</option>
       </select>
-      <button type="submit">Add Room</button>
+      
+      <button type="submit" style={{ width: "100%", marginTop: "10px" }}>Add Room</button>
     </form>
   );
 }

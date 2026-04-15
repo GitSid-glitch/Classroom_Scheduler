@@ -46,109 +46,89 @@ export default function SchedulerPage() {
   };
 
   return (
-    <div style={{ fontFamily: "Arial", margin: "20px" }}>
-\      <button
-        onClick={() => navigate('/')}
-        style={{
-          padding: "10px 20px",
-          fontSize: "16px",
-          backgroundColor: "#6c757d",
-          color: "white",
-          border: "none",
-          borderRadius: "5px",
-          cursor: "pointer",
-          marginBottom: "20px",
-          fontWeight: "bold",
-          transition: "background-color 0.3s"
-        }}
-        onMouseEnter={(e) => e.target.style.backgroundColor = "#5a6268"}
-        onMouseLeave={(e) => e.target.style.backgroundColor = "#6c757d"}
-      >
-        ← Back to Home
-      </button>
-
-      <h1>🎓 Classroom Scheduler (DP + Heap)</h1>
-      <p style={{ color: "#666", marginBottom: "30px" }}>
-        Create rooms, add class sessions, and run the optimized scheduler!
-      </p>
-
-      <FileUpload onUploadComplete={fetchData} />
-
-      <div style={{
-        borderTop: "2px solid #dee2e6",
-        margin: "30px 0",
-        position: "relative"
-      }}>
-        <span style={{
-          position: "absolute",
-          top: "-12px",
-          left: "50%",
-          transform: "translateX(-50%)",
-          backgroundColor: "white",
-          padding: "0 15px",
-          color: "#6c757d",
-          fontWeight: "bold",
-          fontSize: "14px"
+    <div className="app-container">
+      <div className="page-container">
+        
+        <div className="glass-panel" style={{ 
+          display: "flex", 
+          justifyContent: "space-between", 
+          alignItems: "center", 
+          marginBottom: "30px",
+          padding: "30px"
         }}>
-          OR ADD MANUALLY
-        </span>
-      </div>
+          <div>
+            <h1 className="text-gradient" style={{ fontSize: "2.5rem", marginBottom: "5px" }}>
+              Scheduler Dashboard
+            </h1>
+            <p style={{ color: "var(--text-secondary)", margin: 0, fontSize: "1.1rem" }}>
+              Manage resources and execute the Dynamic Programming + Heap Algorithm
+            </p>
+          </div>
+          <button
+            onClick={() => navigate('/')}
+            style={{ 
+              backgroundColor: "rgba(255,255,255,0.05)", 
+              border: "1px solid var(--glass-border)",
+              boxShadow: "none",
+              padding: "12px 24px"
+            }}
+          >
+            ← Back to Home
+          </button>
+        </div>
 
-      <div style={{ 
-        display: "grid", 
-        gridTemplateColumns: "1fr 1fr", 
-        gap: "20px", 
-        marginBottom: "30px" 
-      }}>
-        <RoomForm onCreated={fetchData} existingRooms={rooms} />
-        <ClassForm onCreated={fetchData} existingClasses={classes} />
-      </div>
+        <FileUpload onUploadComplete={fetchData} />
 
-      <div style={{ 
-        display: "grid", 
-        gridTemplateColumns: "1fr 1fr", 
-        gap: "20px", 
-        marginBottom: "30px" 
-      }}>
-        <RoomTable rooms={rooms} />
-        <ClassTable classes={classes} />
-      </div>
+        <div style={{ position: "relative", margin: "40px 0" }}>
+          <div style={{ borderTop: "1px solid var(--glass-border)", width: "100%" }}></div>
+          <span style={{
+            position: "absolute",
+            top: "-12px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            backgroundColor: "#161b36", 
+            padding: "0 20px",
+            color: "var(--text-muted)",
+            fontWeight: "600",
+            fontSize: "14px",
+            letterSpacing: "1px",
+            borderRadius: "50px",
+            border: "1px solid var(--glass-border)"
+          }}>
+            OR ADD MANUALLY
+          </span>
+        </div>
 
-      <div style={{ textAlign: "center", marginBottom: "20px" }}>
-        <button
-          onClick={handleRunOptimized}
-          disabled={loading}
-          style={{
-            padding: "15px 40px",
-            fontSize: "18px",
-            backgroundColor: loading ? "#6c757d" : "#007bff",
-            color: "white",
-            border: "none",
-            cursor: loading ? "not-allowed" : "pointer",
-            borderRadius: "8px",
-            fontWeight: "bold",
-            boxShadow: "0 4px 6px rgba(0,123,255,0.3)",
-            transition: "all 0.3s ease",
-            transform: loading ? "scale(1)" : "scale(1)"
-          }}
-          onMouseEnter={(e) => {
-            if (!loading) {
-              e.target.style.backgroundColor = "#0056b3";
-              e.target.style.transform = "scale(1.05)";
-            }
-          }}
-          onMouseLeave={(e) => {
-            if (!loading) {
-              e.target.style.backgroundColor = "#007bff";
-              e.target.style.transform = "scale(1)";
-            }
-          }}
-        >
-          {loading ? "🔄 Running..." : "🚀 Run Optimized Schedule (DP + Heap)"}
-        </button>
+        <div className="grid-2" style={{ marginBottom: "30px" }}>
+          <RoomForm onCreated={fetchData} existingRooms={rooms} />
+          <ClassForm onCreated={fetchData} existingClasses={classes} />
+        </div>
+
+        <div className="grid-2" style={{ marginBottom: "40px" }}>
+          <RoomTable rooms={rooms} />
+          <ClassTable classes={classes} />
+        </div>
+
+        <div style={{ textAlign: "center", margin: "50px 0 30px" }}>
+          <button
+            onClick={handleRunOptimized}
+            disabled={loading}
+            className="btn-gradient"
+            style={{
+              padding: "18px 50px",
+              fontSize: "1.2rem",
+              borderRadius: "50px",
+              boxShadow: "0 0 30px rgba(99, 102, 241, 0.4)",
+              letterSpacing: "0.5px"
+            }}
+          >
+            {loading ? "🔄 Running DP + Heap Algorithm..." : "🚀 Generate Optimized Schedule"}
+          </button>
+        </div>
+        
+        <ScheduleView scheduleResult={scheduleResult} classes={classes} />
+        
       </div>
-      
-      <ScheduleView scheduleResult={scheduleResult} />
     </div>
   );
 }
