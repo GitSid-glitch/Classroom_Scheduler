@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 
 import { SchedulerApiClient } from "@/lib/api/scheduler-api-client";
+import { CsvImportPanel } from "@/components/setup/csv-import-panel";
 import type { Teacher } from "@/types/domain";
 
 const apiClient = new SchedulerApiClient();
@@ -93,7 +94,21 @@ export function TeacherManager({ initialTeachers }: TeacherManagerProps) {
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+    <div className="grid gap-6">
+      <CsvImportPanel
+        title="Import faculty availability from CSV"
+        description="Bulk upload faculty records from an academic planning spreadsheet. Existing teachers are matched by name so updates refresh department and availability metadata cleanly."
+        expectedHeaders={["name", "department", "max_daily_load", "unavailable_days"]}
+        onImportComplete={async (file) => {
+          const result = await apiClient.uploadTeachersCsv(file);
+          const refreshedTeachers = await apiClient.getTeachers();
+          setTeachers(refreshedTeachers);
+          resetForm();
+          return `Imported faculty registry: ${result.created} created, ${result.updated} updated.`;
+        }}
+      />
+
+      <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
       <section className="rounded-[1.75rem] border border-white/10 bg-white/6 p-6 backdrop-blur">
         <h2 className="text-2xl font-semibold text-stone-50">
           {editingId ? "Edit teacher" : "Add teacher"}
@@ -212,6 +227,7 @@ export function TeacherManager({ initialTeachers }: TeacherManagerProps) {
           ))}
         </div>
       </section>
+      </div>
     </div>
   );
 }

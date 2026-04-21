@@ -1,10 +1,13 @@
 from datetime import time
 
+from django.contrib.auth.models import User
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.utils import timezone
+from rest_framework.test import APIClient
 
-from scheduler.models import ClassSession, Room, RoomUnavailableWindow, Schedule, Teacher, Section
+from scheduler.models import ClassSession, Room, RoomUnavailableWindow, Schedule, Teacher, Section, UserProfile
 from scheduler.services.assistant_service import (
     explain_unscheduled_session,
     suggest_conflict_resolution,
@@ -495,3 +498,119 @@ class SetupModelsTests(TestCase):
         self.assertEqual(section.program, "B.Tech CSE")
         self.assertEqual(section.semester, 4)
         self.assertEqual(section.size, 58)
+
+
+class CsvUploadApiTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+
+    def test_room_upload_upserts_existing_records(self):
+        Room.objects.create(name="A-101", capacity=40, room_type="THEORY", features="")
+        upload = SimpleUploadedFile(
+            "rooms.csv",
+            (
+                "name,capacity,room_type,features\n"
+                "A-101,60,LAB,gpu workstations\n"
+                "B-202,45,THEORY,projector\n"
+            ).encode("utf-8"),
+            content_type="text/csv",
+        )
+
+        response = self.client.post("/api/rooms/upload/", {"file": upload}, format="multipart")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["created"], 1)
+        self.assertEqual(response.data["updated"], 1)
+        self.assertEqual(Room.objects.get(name="A-101").capacity, 60)
+
+    def test_teacher_and_section_upload_create_entities(self):
+        teacher_upload = SimpleUploadedFile(
+            "teachers.csv",
+            (
+                "name,department,max_daily_load,unavailable_days\n"
+                "Dr. Roy,Computer Science,3,FRI\n"
+            ).encode("utf-8"),
+            content_type="text/csv",
+        )
+        section_upload = SimpleUploadedFile(
+            "sections.csv",
+            (
+                "name,program,semester,size\n"
+                "B.Tech CSE 4A,B.Tech CSE,4,58\n"
+            ).encode("utf-8"),
+            content_type="text/csv",
+        )
+
+        teacher_response = self.client.post(
+            "/api/teachers/upload/",
+            {"file": teacher_upload},
+            format="multipart",
+        )
+        section_response = self.client.post(
+            "/api/sections/upload/",
+            {"file": section_upload},
+            format="multipart",
+        )
+
+        self.assertEqual(teacher_response.status_code, 200)
+        self.assertEqual(section_response.status_code, 200)
+        self.assertTrue(Teacher.objects.filter(name="Dr. Roy").exists())
+        self.assertTrue(Section.objects.filter(name="B.Tech CSE 4A").exists())
+
+    def test_class_upload_links_matching_teacher_and_section(self):
+        Teacher.objects.create(name="Dr. Roy", unavailable_days="FRI")
+        Section.objects.create(name="B.Tech CSE 4A", program="B.Tech CSE", semester=4, size=58)
+        upload = SimpleUploadedFile(
+            "classes.csv",
+            (
+                "subject,teacher,batch,day_of_week,start_time,end_time,required_capacity,required_type,value,teacher_unavailable_days,is_locked,required_features\n"
+                "Distributed Systems,Dr. Roy,B.Tech CSE 4A,MON,09:00,10:00,40,THEORY,8,FRI,true,projector\n"
+            ).encode("utf-8"),
+            content_type="text/csv",
+        )
+
+        response = self.client.post("/api/classes/upload/", {"file": upload}, format="multipart")
+
+        self.assertEqual(response.status_code, 200)
+        session = ClassSession.objects.get(subject="Distributed Systems")
+        self.assertIsNotNone(session.teacher_record)
+        self.assertIsNotNone(session.section_record)
+        self.assertTrue(session.is_locked)
+        self.assertEqual(session.required_features, "projector")
+
+
+class AuthApiTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+
+    def test_login_returns_user_role_payload(self):
+        user = User.objects.create_user(
+            username="coordinator",
+            password="testpass123",
+            first_name="Asha",
+            last_name="Mehta",
+        )
+        profile = user.scheduler_profile
+        profile.role = UserProfile.ROLE_COORDINATOR
+        profile.display_name = "Asha Mehta"
+        profile.save(update_fields=["role", "display_name"])
+
+        response = self.client.post(
+            "/api/auth/login/",
+            {"username": "coordinator", "password": "testpass123"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data["username"], "coordinator")
+        self.assertEqual(response.data["display_name"], "Asha Mehta")
+        self.assertEqual(response.data["role"], "COORDINATOR")
+
+    def test_login_rejects_invalid_credentials(self):
+        response = self.client.post(
+            "/api/auth/login/",
+            {"username": "missing", "password": "wrong"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 401)

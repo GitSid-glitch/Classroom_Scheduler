@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 
 import { SchedulerApiClient } from "@/lib/api/scheduler-api-client";
+import { CsvImportPanel } from "@/components/setup/csv-import-panel";
 import type { CourseOffering, DayCode, Section, Teacher } from "@/types/domain";
 
 const apiClient = new SchedulerApiClient();
@@ -146,7 +147,34 @@ export function CourseManager({ initialOfferings, teachers, sections }: CourseMa
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+    <div className="grid gap-6">
+      <CsvImportPanel
+        title="Import timetable demand from CSV"
+        description="Bulk upload course offerings from a planning sheet. Matching sessions are updated by subject, teacher, batch, day, and time so repeated imports stay manageable during timetable iteration."
+        expectedHeaders={[
+          "subject",
+          "teacher",
+          "batch",
+          "day_of_week",
+          "start_time",
+          "end_time",
+          "required_capacity",
+          "required_type",
+          "value",
+          "teacher_unavailable_days",
+          "is_locked",
+          "required_features",
+        ]}
+        onImportComplete={async (file) => {
+          const result = await apiClient.uploadCourseOfferingsCsv(file);
+          const refreshedOfferings = await apiClient.getCourseOfferings();
+          setOfferings(refreshedOfferings);
+          resetForm();
+          return `Imported course offerings: ${result.created} created, ${result.updated} updated.`;
+        }}
+      />
+
+      <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
       <section className="rounded-[1.75rem] border border-white/10 bg-white/6 p-6 backdrop-blur">
         <h2 className="text-2xl font-semibold text-stone-50">
           {editingId ? "Edit course offering" : "Add course offering"}
@@ -417,6 +445,7 @@ export function CourseManager({ initialOfferings, teachers, sections }: CourseMa
           ))}
         </div>
       </section>
+      </div>
     </div>
   );
 }

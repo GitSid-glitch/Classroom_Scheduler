@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 
 import { SchedulerApiClient } from "@/lib/api/scheduler-api-client";
+import { CsvImportPanel } from "@/components/setup/csv-import-panel";
 import type { Section } from "@/types/domain";
 
 const apiClient = new SchedulerApiClient();
@@ -90,7 +91,21 @@ export function SectionManager({ initialSections }: SectionManagerProps) {
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+    <div className="grid gap-6">
+      <CsvImportPanel
+        title="Import sections and cohort metadata from CSV"
+        description="Bulk upload academic sections when each department already maintains a spreadsheet of cohorts. Existing sections are matched by section name and updated in place."
+        expectedHeaders={["name", "program", "semester", "size"]}
+        onImportComplete={async (file) => {
+          const result = await apiClient.uploadSectionsCsv(file);
+          const refreshedSections = await apiClient.getSections();
+          setSections(refreshedSections);
+          resetForm();
+          return `Imported academic sections: ${result.created} created, ${result.updated} updated.`;
+        }}
+      />
+
+      <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
       <section className="rounded-[1.75rem] border border-white/10 bg-white/6 p-6 backdrop-blur">
         <h2 className="text-2xl font-semibold text-stone-50">
           {editingId ? "Edit section" : "Add section"}
@@ -205,6 +220,7 @@ export function SectionManager({ initialSections }: SectionManagerProps) {
           ))}
         </div>
       </section>
+      </div>
     </div>
   );
 }

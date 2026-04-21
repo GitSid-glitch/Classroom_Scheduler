@@ -1,14 +1,18 @@
 from rest_framework import viewsets, status
+from rest_framework.views import APIView
+from rest_framework.permissions import AllowAny
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser
+from django.contrib.auth import authenticate
 from django.utils import timezone
 
-from .models import Room, Teacher, Section, ClassSession, Schedule, Assignment
+from .models import Room, Teacher, Section, UserProfile, ClassSession, Schedule, Assignment
 from .serializers import (
     RoomSerializer,
     TeacherSerializer,
     SectionSerializer,
+    UserProfileSerializer,
     ClassSessionSerializer,
     ScheduleSerializer,
     AssignmentSerializer,
@@ -29,41 +33,141 @@ import csv
 from io import TextIOWrapper
 
 
+def _get_uploaded_rows(request):
+    file = request.FILES.get("file")
+
+    if not file:
+        return None, Response({"error": "No file uploaded"}, status=400)
+
+    decoded_file = TextIOWrapper(file.file, encoding="utf-8")
+    return csv.DictReader(decoded_file), None
+
+
+def _parse_int(value, *, default=0):
+    if value in (None, ""):
+        return default
+    return int(value)
+
+
+class AuthLoginView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        username = request.data.get("username", "").strip()
+        password = request.data.get("password", "")
+
+        if not username or not password:
+            return Response(
+                {"error": "Username and password are required."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        user = authenticate(request, username=username, password=password)
+        if not user:
+            return Response(
+                {"error": "Invalid username or password."},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
+        profile, _ = UserProfile.objects.get_or_create(
+            user=user,
+            defaults={
+                "role": UserProfile.ROLE_ADMIN if user.is_staff or user.is_superuser else UserProfile.ROLE_COORDINATOR,
+                "display_name": user.get_full_name() or user.username,
+            },
+        )
+        payload = UserProfileSerializer(profile).data
+        return Response(payload, status=status.HTTP_200_OK)
+
+
 class RoomViewSet(viewsets.ModelViewSet):
     queryset = Room.objects.all()
     serializer_class = RoomSerializer
 
     @action(detail=False, methods=["post"], parser_classes=[MultiPartParser])
     def upload(self, request):
-        file = request.FILES.get("file")
-
-        if not file:
-            return Response({"error": "No file uploaded"}, status=400)
-
-        decoded_file = TextIOWrapper(file.file, encoding="utf-8")
-        reader = csv.DictReader(decoded_file)
+        reader, error_response = _get_uploaded_rows(request)
+        if error_response:
+            return error_response
 
         created = 0
+        updated = 0
 
         for row in reader:
-            Room.objects.create(
+            _, was_created = Room.objects.update_or_create(
                 name=row["name"],
-                capacity=int(row["capacity"]),
-                room_type=row["room_type"],
+                defaults={
+                    "capacity": _parse_int(row.get("capacity"), default=0),
+                    "room_type": row.get("room_type", "THEORY"),
+                    "features": row.get("features", ""),
+                },
             )
-            created += 1
+            if was_created:
+                created += 1
+            else:
+                updated += 1
 
-        return Response({"created": created, "updated": 0, "failed": 0})
+        return Response({"created": created, "updated": updated, "failed": 0})
 
 
 class TeacherViewSet(viewsets.ModelViewSet):
     queryset = Teacher.objects.all().order_by("name")
     serializer_class = TeacherSerializer
 
+    @action(detail=False, methods=["post"], parser_classes=[MultiPartParser])
+    def upload(self, request):
+        reader, error_response = _get_uploaded_rows(request)
+        if error_response:
+            return error_response
+
+        created = 0
+        updated = 0
+
+        for row in reader:
+            _, was_created = Teacher.objects.update_or_create(
+                name=row["name"],
+                defaults={
+                    "department": row.get("department", ""),
+                    "max_daily_load": _parse_int(row.get("max_daily_load"), default=4),
+                    "unavailable_days": row.get("unavailable_days", ""),
+                },
+            )
+            if was_created:
+                created += 1
+            else:
+                updated += 1
+
+        return Response({"created": created, "updated": updated, "failed": 0})
+
 
 class SectionViewSet(viewsets.ModelViewSet):
     queryset = Section.objects.all().order_by("name")
     serializer_class = SectionSerializer
+
+    @action(detail=False, methods=["post"], parser_classes=[MultiPartParser])
+    def upload(self, request):
+        reader, error_response = _get_uploaded_rows(request)
+        if error_response:
+            return error_response
+
+        created = 0
+        updated = 0
+
+        for row in reader:
+            _, was_created = Section.objects.update_or_create(
+                name=row["name"],
+                defaults={
+                    "program": row.get("program", ""),
+                    "semester": _parse_int(row.get("semester"), default=1),
+                    "size": _parse_int(row.get("size"), default=0),
+                },
+            )
+            if was_created:
+                created += 1
+            else:
+                updated += 1
+
+        return Response({"created": created, "updated": updated, "failed": 0})
 
 
 class ClassSessionViewSet(viewsets.ModelViewSet):
@@ -72,31 +176,41 @@ class ClassSessionViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["post"], parser_classes=[MultiPartParser])
     def upload(self, request):
-        file = request.FILES.get("file")
-
-        if not file:
-            return Response({"error": "No file uploaded"}, status=400)
-
-        decoded_file = TextIOWrapper(file.file, encoding="utf-8")
-        reader = csv.DictReader(decoded_file)
+        reader, error_response = _get_uploaded_rows(request)
+        if error_response:
+            return error_response
 
         created = 0
+        updated = 0
 
         for row in reader:
-            ClassSession.objects.create(
+            teacher_record = Teacher.objects.filter(name=row.get("teacher", "")).first()
+            section_record = Section.objects.filter(name=row.get("batch", "")).first()
+
+            _, was_created = ClassSession.objects.update_or_create(
                 subject=row["subject"],
                 teacher=row["teacher"],
                 batch=row["batch"],
                 day_of_week=row["day_of_week"],
                 start_time=row["start_time"],
                 end_time=row["end_time"],
-                required_capacity=int(row["required_capacity"]),
-                required_type=row["required_type"],
-                value=int(row["value"]),
+                defaults={
+                    "teacher_record": teacher_record,
+                    "section_record": section_record,
+                    "required_capacity": _parse_int(row.get("required_capacity"), default=0),
+                    "required_type": row.get("required_type", "ANY"),
+                    "value": _parse_int(row.get("value"), default=1),
+                    "teacher_unavailable_days": row.get("teacher_unavailable_days", ""),
+                    "is_locked": str(row.get("is_locked", "")).lower() in {"true", "1", "yes"},
+                    "required_features": row.get("required_features", ""),
+                },
             )
-            created += 1
+            if was_created:
+                created += 1
+            else:
+                updated += 1
 
-        return Response({"created": created})
+        return Response({"created": created, "updated": updated, "failed": 0})
 
 class AssignmentViewSet(viewsets.ModelViewSet):
     queryset = Assignment.objects.all()

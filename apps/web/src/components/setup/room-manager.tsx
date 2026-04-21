@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 
 import { SchedulerApiClient } from "@/lib/api/scheduler-api-client";
+import { CsvImportPanel } from "@/components/setup/csv-import-panel";
 import type { Room } from "@/types/domain";
 
 const apiClient = new SchedulerApiClient();
@@ -91,7 +92,21 @@ export function RoomManager({ initialRooms }: RoomManagerProps) {
   }
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+    <div className="grid gap-6">
+      <CsvImportPanel
+        title="Import room inventory from CSV"
+        description="Bulk upload room inventory when migrating from an existing registrar spreadsheet. Existing rooms are matched by room name and updated instead of duplicated."
+        expectedHeaders={["name", "capacity", "room_type", "features"]}
+        onImportComplete={async (file) => {
+          const result = await apiClient.uploadRoomsCsv(file);
+          const refreshedRooms = await apiClient.getRooms();
+          setRooms(refreshedRooms);
+          resetForm();
+          return `Imported room inventory: ${result.created} created, ${result.updated} updated.`;
+        }}
+      />
+
+      <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
       <section className="rounded-[1.75rem] border border-white/10 bg-white/6 p-6 backdrop-blur">
         <h2 className="text-2xl font-semibold text-stone-50">
           {editingId ? "Edit room" : "Add room"}
@@ -218,6 +233,7 @@ export function RoomManager({ initialRooms }: RoomManagerProps) {
           ))}
         </div>
       </section>
+      </div>
     </div>
   );
 }

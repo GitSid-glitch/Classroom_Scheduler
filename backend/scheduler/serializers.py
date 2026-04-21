@@ -4,6 +4,7 @@ from .models import (
     RoomUnavailableWindow,
     Teacher,
     Section,
+    UserProfile,
     ClassSession,
     Schedule,
     Assignment,
@@ -34,6 +35,14 @@ class SectionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Section
         fields = "__all__"
+
+
+class UserProfileSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source="user.username", read_only=True)
+
+    class Meta:
+        model = UserProfile
+        fields = ["username", "display_name", "role"]
 
 
 class ClassSessionSerializer(serializers.ModelSerializer):

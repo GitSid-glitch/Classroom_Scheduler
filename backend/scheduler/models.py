@@ -1,5 +1,8 @@
 from django.db import models
 from django.core.exceptions import ValidationError
+from django.contrib.auth.models import User
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 
 
 class Room(models.Model):
@@ -72,6 +75,13 @@ class ClassSession(models.Model):
     subject = models.CharField(max_length=100)
     teacher = models.CharField(max_length=100)
     batch = models.CharField(max_length=50)
+    fixed_room = models.ForeignKey(
+        Room,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="fixed_class_sessions",
+    )
     teacher_record = models.ForeignKey(
         Teacher,
         null=True,
@@ -163,3 +173,48 @@ class Assignment(models.Model):
 
     class Meta:
         unique_together = ("schedule", "class_session", "room")
+
+
+class UserProfile(models.Model):
+    ROLE_ADMIN = "ADMIN"
+    ROLE_COORDINATOR = "COORDINATOR"
+    ROLE_FACULTY = "FACULTY"
+    ROLE_STUDENT = "STUDENT"
+
+    ROLE_CHOICES = (
+        (ROLE_ADMIN, "Admin"),
+        (ROLE_COORDINATOR, "Coordinator"),
+        (ROLE_FACULTY, "Faculty"),
+        (ROLE_STUDENT, "Student"),
+    )
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="scheduler_profile")
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default=ROLE_COORDINATOR)
+    display_name = models.CharField(max_length=120, blank=True, default="")
+
+    def __str__(self):
+        return self.display_name or self.user.get_full_name() or self.user.username
+
+
+@receiver(post_save, sender=User)
+def ensure_user_profile(sender, instance, created, **kwargs):
+    if created:
+        UserProfile.objects.create(
+            user=instance,
+            role=UserProfile.ROLE_ADMIN if instance.is_staff or instance.is_superuser else UserProfile.ROLE_COORDINATOR,
+            display_name=instance.get_full_name() or instance.username,
+        )
+        return
+
+    profile, _ = UserProfile.objects.get_or_create(
+        user=instance,
+        defaults={
+            "role": UserProfile.ROLE_ADMIN if instance.is_staff or instance.is_superuser else UserProfile.ROLE_COORDINATOR,
+            "display_name": instance.get_full_name() or instance.username,
+        },
+    )
+
+    updated_display_name = instance.get_full_name() or instance.username
+    if profile.display_name != updated_display_name:
+        profile.display_name = updated_display_name
+        profile.save(update_fields=["display_name"])

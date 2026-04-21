@@ -156,6 +156,16 @@ export class SchedulerApiClient {
     });
   }
 
+  public async uploadRoomsCsv(file: File): Promise<{ created: number; updated: number; failed: number }> {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    return this.request("/rooms/upload/", {
+      method: "POST",
+      body: formData,
+    });
+  }
+
   public async getCourseOfferings(): Promise<CourseOffering[]> {
     const payload = await this.request<ApiClassSession[]>("/classes/");
 
@@ -246,6 +256,18 @@ export class SchedulerApiClient {
   public async deleteCourseOffering(courseId: string): Promise<void> {
     await this.request<void>(`/classes/${courseId}/`, {
       method: "DELETE",
+    });
+  }
+
+  public async uploadCourseOfferingsCsv(
+    file: File,
+  ): Promise<{ created: number; updated: number; failed: number }> {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    return this.request("/classes/upload/", {
+      method: "POST",
+      body: formData,
     });
   }
 
@@ -414,6 +436,18 @@ export class SchedulerApiClient {
     });
   }
 
+  public async uploadTeachersCsv(
+    file: File,
+  ): Promise<{ created: number; updated: number; failed: number }> {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    return this.request("/teachers/upload/", {
+      method: "POST",
+      body: formData,
+    });
+  }
+
   public async createSection(payload: {
     name: string;
     program: string;
@@ -473,18 +507,62 @@ export class SchedulerApiClient {
     });
   }
 
+  public async uploadSectionsCsv(
+    file: File,
+  ): Promise<{ created: number; updated: number; failed: number }> {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    return this.request("/sections/upload/", {
+      method: "POST",
+      body: formData,
+    });
+  }
+
+  public async authenticateUser(payload: {
+    username: string;
+    password: string;
+  }): Promise<AuthIdentity> {
+    const identity = await this.request<ApiAuthIdentity>("/auth/login/", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+
+    return {
+      username: identity.username,
+      displayName: identity.display_name,
+      role: identity.role,
+    };
+  }
+
   private async request<T>(path: string, init?: RequestInit): Promise<T> {
+    const headers =
+      init?.body instanceof FormData
+        ? { ...(init?.headers ?? {}) }
+        : {
+            "Content-Type": "application/json",
+            ...(init?.headers ?? {}),
+          };
+
     const response = await fetch(`${this.config.backendBaseUrl}${path}`, {
       ...init,
-      headers: {
-        "Content-Type": "application/json",
-        ...(init?.headers ?? {}),
-      },
+      headers,
       cache: "no-store",
     });
 
     if (!response.ok) {
-      throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+      let detail = `API request failed: ${response.status} ${response.statusText}`;
+
+      try {
+        const payload = (await response.json()) as { error?: string };
+        if (payload.error) {
+          detail = payload.error;
+        }
+      } catch {
+        detail = `API request failed: ${response.status} ${response.statusText}`;
+      }
+
+      throw new Error(detail);
     }
 
     if (response.status === 204) {
