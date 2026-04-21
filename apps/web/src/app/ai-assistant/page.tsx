@@ -9,6 +9,8 @@ const repository = new AcademicRepository();
 
 export default async function AiAssistantPage() {
   let explanationCount = 0;
+  let source: "rules" | "llm" | undefined;
+  let model: string | undefined;
   let suggestion = {
     title: "Assistant unavailable",
     suggestion: "Backend assistant data is not reachable yet, so this page is showing fallback content.",
@@ -24,6 +26,8 @@ export default async function AiAssistantPage() {
     const offerings = await repository.getCourseOfferings();
     const firstOfferingId = offerings[0]?.id;
     const assistant = await apiClient.getAssistantInsights(firstOfferingId);
+    source = assistant.source;
+    model = assistant.model;
     explanationCount = assistant.explanations.length;
     suggestion = assistant.suggestion;
     explanation = assistant.explanation
@@ -60,6 +64,8 @@ export default async function AiAssistantPage() {
         </div>
       </section>
       <AssistantPanels
+        source={source}
+        model={model}
         suggestion={suggestion}
         explanation={explanation}
         explanations={explanations}

@@ -1,6 +1,8 @@
 import type { ScheduleExplanation } from "@/types/domain";
 
 interface AssistantPanelsProps {
+  source?: "rules" | "llm";
+  model?: string;
   suggestion: {
     title: string;
     suggestion: string;
@@ -20,6 +22,8 @@ const prompts = [
 ];
 
 export function AssistantPanels({
+  source,
+  model,
   suggestion,
   explanation,
   explanations,
@@ -49,6 +53,9 @@ export function AssistantPanels({
         <p className="text-sm font-semibold uppercase tracking-[0.3em] text-emerald-200">
           Live Assistant Output
         </p>
+        <div className="mt-3 inline-flex rounded-full border border-emerald-300/20 bg-emerald-300/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-100">
+          {source === "llm" ? `Model-backed${model ? ` • ${model}` : ""}` : "Rule-backed fallback"}
+        </div>
         <div className="mt-5 grid gap-4">
           <div className="rounded-[1.25rem] border border-emerald-300/15 bg-emerald-400/10 px-4 py-4 text-sm leading-7 text-emerald-50">
             <p className="font-semibold text-emerald-100">{suggestion.title}</p>
