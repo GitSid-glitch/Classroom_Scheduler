@@ -48,10 +48,44 @@ class RoomUnavailableWindow(models.Model):
         return f"{self.room.name} unavailable on {self.day_of_week} {self.start_time}-{self.end_time}"
 
 
+class Teacher(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    department = models.CharField(max_length=100, blank=True, default="")
+    max_daily_load = models.PositiveIntegerField(default=4)
+    unavailable_days = models.CharField(max_length=100, blank=True, default="")
+
+    def __str__(self):
+        return self.name
+
+
+class Section(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    program = models.CharField(max_length=100, blank=True, default="")
+    semester = models.PositiveIntegerField(default=1)
+    size = models.PositiveIntegerField(default=0)
+
+    def __str__(self):
+        return self.name
+
+
 class ClassSession(models.Model):
     subject = models.CharField(max_length=100)
     teacher = models.CharField(max_length=100)
     batch = models.CharField(max_length=50)
+    teacher_record = models.ForeignKey(
+        Teacher,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="class_sessions",
+    )
+    section_record = models.ForeignKey(
+        Section,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="class_sessions",
+    )
 
     day_of_week = models.CharField(
         max_length=10,
@@ -82,9 +116,22 @@ class ClassSession(models.Model):
     is_locked = models.BooleanField(default=False)
     required_features = models.CharField(max_length=255, blank=True, default="")
 
+    def sync_linked_metadata(self):
+        if self.teacher_record_id:
+            self.teacher = self.teacher_record.name
+            self.teacher_unavailable_days = self.teacher_record.unavailable_days
+
+        if self.section_record_id:
+            self.batch = self.section_record.name
+
     def clean(self):
         if self.end_time <= self.start_time:
             raise ValidationError({"end_time": "End time must be after start time."})
+        self.sync_linked_metadata()
+
+    def save(self, *args, **kwargs):
+        self.sync_linked_metadata()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.subject} - {self.batch} ({self.day_of_week} {self.start_time}-{self.end_time})"

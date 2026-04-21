@@ -4,7 +4,7 @@ from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.utils import timezone
 
-from scheduler.models import ClassSession, Room, RoomUnavailableWindow, Schedule
+from scheduler.models import ClassSession, Room, RoomUnavailableWindow, Schedule, Teacher, Section
 from scheduler.services.assistant_service import (
     explain_unscheduled_session,
     suggest_conflict_resolution,
@@ -34,6 +34,38 @@ class ClassSessionModelTests(TestCase):
 
         with self.assertRaises(ValidationError):
             session.clean()
+
+    def test_linked_teacher_and_section_sync_string_fields(self):
+        teacher = Teacher.objects.create(
+            name="Dr. Sharma",
+            department="Computer Science",
+            max_daily_load=3,
+            unavailable_days="FRI",
+        )
+        section = Section.objects.create(
+            name="B.Tech CSE 5A",
+            program="B.Tech CSE",
+            semester=5,
+            size=52,
+        )
+
+        session = ClassSession.objects.create(
+            subject="Distributed Systems",
+            teacher="placeholder",
+            batch="placeholder",
+            teacher_record=teacher,
+            section_record=section,
+            day_of_week="MON",
+            start_time=time(9, 0),
+            end_time=time(10, 0),
+            required_capacity=40,
+            required_type="ANY",
+            value=8,
+        )
+
+        self.assertEqual(session.teacher, "Dr. Sharma")
+        self.assertEqual(session.batch, "B.Tech CSE 5A")
+        self.assertEqual(session.teacher_unavailable_days, "FRI")
 
 
 class SchedulerServiceTests(TestCase):
@@ -437,3 +469,29 @@ class ScheduleWorkflowTests(TestCase):
 
         self.assertEqual(schedule.status, "PUBLISHED")
         self.assertIsNotNone(schedule.published_at)
+
+
+class SetupModelsTests(TestCase):
+    def test_teacher_model_stores_department_and_availability(self):
+        teacher = Teacher.objects.create(
+            name="Dr. Kapoor",
+            department="Computer Science",
+            max_daily_load=3,
+            unavailable_days="FRI",
+        )
+
+        self.assertEqual(teacher.department, "Computer Science")
+        self.assertEqual(teacher.max_daily_load, 3)
+        self.assertEqual(teacher.unavailable_days, "FRI")
+
+    def test_section_model_stores_program_metadata(self):
+        section = Section.objects.create(
+            name="B.Tech CSE 4A",
+            program="B.Tech CSE",
+            semester=4,
+            size=58,
+        )
+
+        self.assertEqual(section.program, "B.Tech CSE")
+        self.assertEqual(section.semester, 4)
+        self.assertEqual(section.size, 58)

@@ -1,5 +1,13 @@
 from rest_framework import serializers
-from .models import Room, RoomUnavailableWindow, ClassSession, Schedule, Assignment
+from .models import (
+    Room,
+    RoomUnavailableWindow,
+    Teacher,
+    Section,
+    ClassSession,
+    Schedule,
+    Assignment,
+)
 
 
 class RoomUnavailableWindowSerializer(serializers.ModelSerializer):
@@ -13,6 +21,18 @@ class RoomSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Room
+        fields = "__all__"
+
+
+class TeacherSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Teacher
+        fields = "__all__"
+
+
+class SectionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Section
         fields = "__all__"
 
 

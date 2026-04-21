@@ -4,9 +4,11 @@ from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser
 from django.utils import timezone
 
-from .models import Room, ClassSession, Schedule, Assignment
+from .models import Room, Teacher, Section, ClassSession, Schedule, Assignment
 from .serializers import (
     RoomSerializer,
+    TeacherSerializer,
+    SectionSerializer,
     ClassSessionSerializer,
     ScheduleSerializer,
     AssignmentSerializer,
@@ -52,6 +54,17 @@ class RoomViewSet(viewsets.ModelViewSet):
             created += 1
 
         return Response({"created": created, "updated": 0, "failed": 0})
+
+
+class TeacherViewSet(viewsets.ModelViewSet):
+    queryset = Teacher.objects.all().order_by("name")
+    serializer_class = TeacherSerializer
+
+
+class SectionViewSet(viewsets.ModelViewSet):
+    queryset = Section.objects.all().order_by("name")
+    serializer_class = SectionSerializer
+
 
 class ClassSessionViewSet(viewsets.ModelViewSet):
     queryset = ClassSession.objects.all()
