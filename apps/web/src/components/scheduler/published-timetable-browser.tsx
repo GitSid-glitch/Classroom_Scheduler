@@ -3,6 +3,10 @@
 import { useMemo, useState } from "react";
 
 import type { ScheduleRunResponse } from "@/lib/api/scheduler-api-client";
+import {
+  WeeklyTimetableGrid,
+  type WeeklyTimetableEntry,
+} from "@/components/scheduler/weekly-timetable-grid";
 import type { CourseOffering, Room } from "@/types/domain";
 
 type TimetableEntry = {
@@ -92,6 +96,20 @@ export function PublishedTimetableBrowser({
       items: filteredEntries.filter((entry) => entry.dayCode === dayCode),
     }));
   }, [filteredEntries]);
+
+  const calendarEntries = useMemo<WeeklyTimetableEntry[]>(
+    () =>
+      filteredEntries.map((entry) => ({
+        id: String(entry.assignmentId),
+        title: entry.title,
+        subtitle: `${entry.section} • ${entry.teacher}`,
+        meta: `Room ${entry.room}`,
+        dayCode: entry.dayCode,
+        startTime: entry.startTime,
+        endTime: entry.endTime,
+      })),
+    [filteredEntries],
+  );
 
   return (
     <section className="rounded-[1.75rem] border border-stone-800 bg-stone-950 p-6">
@@ -214,6 +232,15 @@ export function PublishedTimetableBrowser({
             </div>
           </article>
         ))}
+      </div>
+
+      <div className="mt-6">
+        <WeeklyTimetableGrid
+          title="Weekly calendar view"
+          description="A denser calendar view helps faculty and students understand the released timetable faster than scanning cards day by day."
+          entries={calendarEntries}
+          emptyMessage="No published timetable entries are available for the current filter."
+        />
       </div>
     </section>
   );
