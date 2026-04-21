@@ -35,7 +35,11 @@ export interface CourseOffering {
   title: string;
   department: string;
   teacherId: string;
+  teacherRecordId?: string | null;
+  teacherName?: string;
   sectionId: string;
+  sectionRecordId?: string | null;
+  sectionName?: string;
   dayCode: DayCode;
   startTime: string;
   endTime: string;

@@ -7,6 +7,8 @@ const repository = new AcademicRepository();
 
 export default async function CoursesPage() {
   const offerings = await repository.getCourseOfferings();
+  const teachers = await repository.getTeachers();
+  const sections = await repository.getSections();
 
   return (
     <AppShell
@@ -40,7 +42,11 @@ export default async function CoursesPage() {
           },
         ]}
       />
-      <CourseManager initialOfferings={offerings} />
+      <CourseManager
+        initialOfferings={offerings}
+        teachers={teachers}
+        sections={sections}
+      />
     </AppShell>
   );
 }

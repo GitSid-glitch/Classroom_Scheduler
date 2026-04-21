@@ -3,17 +3,19 @@
 import { useState, useTransition } from "react";
 
 import { SchedulerApiClient } from "@/lib/api/scheduler-api-client";
-import type { CourseOffering, DayCode } from "@/types/domain";
+import type { CourseOffering, DayCode, Section, Teacher } from "@/types/domain";
 
 const apiClient = new SchedulerApiClient();
 
 interface CourseManagerProps {
   initialOfferings: CourseOffering[];
+  teachers: Teacher[];
+  sections: Section[];
 }
 
 const days: DayCode[] = ["MON", "TUE", "WED", "THU", "FRI", "SAT"];
 
-export function CourseManager({ initialOfferings }: CourseManagerProps) {
+export function CourseManager({ initialOfferings, teachers, sections }: CourseManagerProps) {
   const [offerings, setOfferings] = useState(initialOfferings);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -21,7 +23,9 @@ export function CourseManager({ initialOfferings }: CourseManagerProps) {
   const [form, setForm] = useState({
     title: "",
     teacher: "",
+    teacherRecordId: "",
     batch: "",
+    sectionRecordId: "",
     dayCode: "MON" as DayCode,
     startTime: "09:00",
     endTime: "10:00",
@@ -38,7 +42,9 @@ export function CourseManager({ initialOfferings }: CourseManagerProps) {
     setForm({
       title: "",
       teacher: "",
+      teacherRecordId: "",
       batch: "",
+      sectionRecordId: "",
       dayCode: "MON",
       startTime: "09:00",
       endTime: "10:00",
@@ -60,7 +66,9 @@ export function CourseManager({ initialOfferings }: CourseManagerProps) {
         const payload = {
           title: form.title,
           teacher: form.teacher,
+          teacherRecordId: form.teacherRecordId || null,
           batch: form.batch,
+          sectionRecordId: form.sectionRecordId || null,
           dayCode: form.dayCode,
           startTime: form.startTime,
           endTime: form.endTime,
@@ -103,8 +111,10 @@ export function CourseManager({ initialOfferings }: CourseManagerProps) {
     setEditingId(offering.id);
     setForm({
       title: offering.title,
-      teacher: offering.teacherId,
-      batch: offering.sectionId,
+      teacher: offering.teacherName ?? offering.teacherId,
+      teacherRecordId: offering.teacherRecordId ?? "",
+      batch: offering.sectionName ?? offering.sectionId,
+      sectionRecordId: offering.sectionRecordId ?? "",
       dayCode: offering.dayCode,
       startTime: offering.startTime.slice(0, 5),
       endTime: offering.endTime.slice(0, 5),
@@ -159,25 +169,53 @@ export function CourseManager({ initialOfferings }: CourseManagerProps) {
           <div className="grid gap-4 md:grid-cols-2">
             <label className="grid gap-2 text-sm text-stone-200">
               Teacher
-              <input
+              <select
                 className="rounded-2xl border border-stone-600 bg-stone-950 px-4 py-3 text-stone-50"
-                value={form.teacher}
+                value={form.teacherRecordId}
                 onChange={(event) =>
-                  setForm((current) => ({ ...current, teacher: event.target.value }))
+                  setForm((current) => {
+                    const selected = teachers.find((item) => item.id === event.target.value);
+                    return {
+                      ...current,
+                      teacherRecordId: event.target.value,
+                      teacher: selected?.name ?? "",
+                    };
+                  })
                 }
                 required
-              />
+              >
+                <option value="">Select teacher</option>
+                {teachers.map((teacher) => (
+                  <option key={teacher.id} value={teacher.id}>
+                    {teacher.name}
+                  </option>
+                ))}
+              </select>
             </label>
             <label className="grid gap-2 text-sm text-stone-200">
               Batch / section
-              <input
+              <select
                 className="rounded-2xl border border-stone-600 bg-stone-950 px-4 py-3 text-stone-50"
-                value={form.batch}
+                value={form.sectionRecordId}
                 onChange={(event) =>
-                  setForm((current) => ({ ...current, batch: event.target.value }))
+                  setForm((current) => {
+                    const selected = sections.find((item) => item.id === event.target.value);
+                    return {
+                      ...current,
+                      sectionRecordId: event.target.value,
+                      batch: selected?.name ?? "",
+                    };
+                  })
                 }
                 required
-              />
+              >
+                <option value="">Select section</option>
+                {sections.map((section) => (
+                  <option key={section.id} value={section.id}>
+                    {section.name}
+                  </option>
+                ))}
+              </select>
             </label>
           </div>
 
@@ -343,7 +381,7 @@ export function CourseManager({ initialOfferings }: CourseManagerProps) {
                 <div>
                   <p className="text-base font-semibold text-stone-50">{offering.title}</p>
                   <p className="mt-1 text-sm text-stone-300">
-                    {offering.sectionId} • {offering.dayCode} • {offering.startTime}-
+                    {(offering.sectionName ?? offering.sectionId)} • {offering.dayCode} • {offering.startTime}-
                     {offering.endTime}
                   </p>
                   <p className="mt-1 text-sm text-stone-400">

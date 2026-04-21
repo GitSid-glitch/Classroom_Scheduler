@@ -55,6 +55,8 @@ type ApiClassSession = {
   subject: string;
   teacher: string;
   batch: string;
+  teacher_record: number | null;
+  section_record: number | null;
   day_of_week: CourseOffering["dayCode"];
   start_time: string;
   end_time: string;
@@ -163,7 +165,9 @@ export class SchedulerApiClient {
   public async createCourseOffering(payload: {
     title: string;
     teacher: string;
+    teacherRecordId?: string | null;
     batch: string;
+    sectionRecordId?: string | null;
     dayCode: CourseOffering["dayCode"];
     startTime: string;
     endTime: string;
@@ -180,6 +184,8 @@ export class SchedulerApiClient {
         subject: payload.title,
         teacher: payload.teacher,
         batch: payload.batch,
+        teacher_record: payload.teacherRecordId ? Number(payload.teacherRecordId) : null,
+        section_record: payload.sectionRecordId ? Number(payload.sectionRecordId) : null,
         day_of_week: payload.dayCode,
         start_time: payload.startTime,
         end_time: payload.endTime,
@@ -200,7 +206,9 @@ export class SchedulerApiClient {
     payload: {
       title: string;
       teacher: string;
+      teacherRecordId?: string | null;
       batch: string;
+      sectionRecordId?: string | null;
       dayCode: CourseOffering["dayCode"];
       startTime: string;
       endTime: string;
@@ -248,6 +256,20 @@ export class SchedulerApiClient {
 
   public async listSchedules(): Promise<ScheduleRunResponse[]> {
     return this.request<ScheduleRunResponse[]>("/schedules/");
+  }
+
+  public async publishSchedule(scheduleId: number): Promise<ScheduleRunResponse> {
+    return this.request<ScheduleRunResponse>(`/schedules/${scheduleId}/publish/`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+  }
+
+  public async unpublishSchedule(scheduleId: number): Promise<ScheduleRunResponse> {
+    return this.request<ScheduleRunResponse>(`/schedules/${scheduleId}/unpublish/`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
   }
 
   public async analyzeScheduleInputs(): Promise<{
@@ -493,7 +515,11 @@ export class SchedulerApiClient {
       title: session.subject,
       department: "Academic Scheduling",
       teacherId: session.teacher,
+      teacherRecordId: session.teacher_record ? String(session.teacher_record) : null,
+      teacherName: session.teacher,
       sectionId: session.batch,
+      sectionRecordId: session.section_record ? String(session.section_record) : null,
+      sectionName: session.batch,
       dayCode: session.day_of_week,
       startTime: session.start_time,
       endTime: session.end_time,
