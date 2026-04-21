@@ -68,9 +68,12 @@ export default async function SchedulerRunPage() {
       description="This route is where a coordinator should generate a draft, inspect whether the algorithm actually satisfied institutional constraints, and move into conflict review when it did not."
       actions={
         <>
-          <button className="rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-stone-950 transition hover:bg-amber-200">
-            Re-run optimized schedule
-          </button>
+          <Link
+            href="/dashboard"
+            className="rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-stone-950 transition hover:bg-amber-200"
+          >
+            Open release manager
+          </Link>
           <Link
             href="/scheduler/conflicts"
             className="rounded-full border border-stone-500 px-5 py-3 text-sm font-semibold text-stone-100 transition hover:border-stone-300 hover:bg-white/5"

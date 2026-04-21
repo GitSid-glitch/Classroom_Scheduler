@@ -2,22 +2,26 @@ import Link from "next/link";
 
 import { InsightsPanel } from "@/components/dashboard/insights-panel";
 import { MetricsGrid } from "@/components/dashboard/metrics-grid";
+import { ScheduleReleaseManager } from "@/components/scheduler/schedule-release-manager";
 import { DashboardService } from "@/lib/services/dashboard-service";
 import { SchedulerApiClient } from "@/lib/api/scheduler-api-client";
 
 const dashboardService = new DashboardService();
 const apiClient = new SchedulerApiClient();
+type ScheduleListItem = Awaited<ReturnType<SchedulerApiClient["listSchedules"]>>[number];
 
 export default async function DashboardPage() {
   const snapshot = dashboardService.getSnapshot();
+  let schedules: ScheduleListItem[] = [];
   let publishedCount = 0;
   let draftCount = 0;
 
   try {
-    const schedules = await apiClient.listSchedules();
+    schedules = await apiClient.listSchedules();
     publishedCount = schedules.filter((schedule) => schedule.status === "PUBLISHED").length;
     draftCount = schedules.filter((schedule) => schedule.status === "DRAFT").length;
   } catch {
+    schedules = [];
     publishedCount = 0;
     draftCount = 0;
   }
@@ -91,6 +95,7 @@ export default async function DashboardPage() {
         </article>
       </section>
 
+      <ScheduleReleaseManager initialSchedules={schedules} />
       <InsightsPanel insights={snapshot.insights} />
     </main>
   );
