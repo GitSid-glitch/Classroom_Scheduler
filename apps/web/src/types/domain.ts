@@ -73,6 +73,16 @@ export interface SchedulingMetric {
   change: string;
 }
 
+export interface AuditEvent {
+  id: string;
+  entityType: string;
+  entityId: number;
+  action: string;
+  summary: string;
+  createdAt: string;
+  metadata: Record<string, string | number | boolean | null>;
+}
+
 export interface DashboardSnapshot {
   metrics: SchedulingMetric[];
   insights: SchedulingInsight[];

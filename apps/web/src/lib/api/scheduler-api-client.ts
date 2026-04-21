@@ -1,6 +1,7 @@
 import { AppConfig } from "@/lib/config/app-config";
 import type { AuthIdentity } from "@/lib/auth/access";
 import type {
+  AuditEvent,
   CourseOffering,
   Room,
   RoomType,
@@ -9,7 +10,7 @@ import type {
   Teacher,
 } from "@/types/domain";
 
-interface ScheduleRunResponse {
+export interface ScheduleRunResponse {
   id: number;
   name: string;
   created_at: string;
@@ -90,6 +91,16 @@ type ApiAuthIdentity = {
   username: string;
   display_name: string;
   role: AuthIdentity["role"];
+};
+
+type ApiAuditEvent = {
+  id: number;
+  entity_type: string;
+  entity_id: number;
+  action: string;
+  summary: string;
+  metadata: Record<string, string | number | boolean | null>;
+  created_at: string;
 };
 
 export class SchedulerApiClient {
@@ -320,6 +331,8 @@ export class SchedulerApiClient {
   }
 
   public async getAssistantInsights(classSessionId?: string): Promise<{
+    source?: "rules" | "llm";
+    model?: string;
     suggestion: {
       title: string;
       suggestion: string;
@@ -356,6 +369,23 @@ export class SchedulerApiClient {
     };
   }> {
     return this.request("/schedules/analytics/");
+  }
+
+  public async getAuditEvents(): Promise<AuditEvent[]> {
+    const payload = await this.request<ApiAuditEvent[]>("/audit-events/");
+    return payload.map((event) => ({
+      id: String(event.id),
+      entityType: event.entity_type,
+      entityId: event.entity_id,
+      action: event.action,
+      summary: event.summary,
+      createdAt: event.created_at,
+      metadata: event.metadata ?? {},
+    }));
+  }
+
+  public getScheduleExportUrl(scheduleId: number): string {
+    return `${this.config.backendBaseUrl}/schedules/${scheduleId}/export_csv/`;
   }
 
   public async getTeachers(): Promise<Teacher[]> {
@@ -632,5 +662,3 @@ export class SchedulerApiClient {
     };
   }
 }
-
-export type { ScheduleRunResponse };
