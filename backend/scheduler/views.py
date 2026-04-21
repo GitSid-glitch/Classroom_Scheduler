@@ -80,6 +80,19 @@ class AuthLoginView(APIView):
         return Response(payload, status=status.HTTP_200_OK)
 
 
+class HealthCheckView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        return Response(
+            {
+                "status": "ok",
+                "service": "smart-academic-scheduler-api",
+            },
+            status=status.HTTP_200_OK,
+        )
+
+
 class RoomViewSet(viewsets.ModelViewSet):
     queryset = Room.objects.all()
     serializer_class = RoomSerializer

@@ -3,6 +3,7 @@ from rest_framework.routers import DefaultRouter
 
 from .views import (
     AuthLoginView,
+    HealthCheckView,
     RoomViewSet,
     TeacherViewSet,
     SectionViewSet,
@@ -18,6 +19,7 @@ router.register(r"classes", ClassSessionViewSet, basename="classsession")
 router.register(r"schedules", ScheduleViewSet, basename="schedule")
 
 urlpatterns = [
+    path("health/", HealthCheckView.as_view(), name="health-check"),
     path("auth/login/", AuthLoginView.as_view(), name="auth-login"),
     path("", include(router.urls)),
 ]
