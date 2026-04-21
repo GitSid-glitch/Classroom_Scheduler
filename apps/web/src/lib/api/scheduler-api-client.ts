@@ -226,6 +226,8 @@ export class SchedulerApiClient {
         subject: payload.title,
         teacher: payload.teacher,
         batch: payload.batch,
+        teacher_record: payload.teacherRecordId ? Number(payload.teacherRecordId) : null,
+        section_record: payload.sectionRecordId ? Number(payload.sectionRecordId) : null,
         day_of_week: payload.dayCode,
         start_time: payload.startTime,
         end_time: payload.endTime,
