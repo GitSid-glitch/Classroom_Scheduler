@@ -1,4 +1,6 @@
 import bisect
+
+
 def weighted_interval_scheduling(classes):
     if not classes:
         return []

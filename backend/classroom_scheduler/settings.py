@@ -13,6 +13,13 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 from pathlib import Path
 import os
 
+
+def _get_list_env(name, default):
+    raw_value = os.environ.get(name)
+    if not raw_value:
+        return default
+    return [item.strip() for item in raw_value.split(",") if item.strip()]
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -126,21 +133,32 @@ STATIC_URL = 'static/'
 
 # ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
 
-# CORS Configuration
-CORS_ALLOWED_ORIGINS = [
+# CORS / CSRF Configuration
+DEFAULT_CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
     "http://localhost:3000",
-    "https://classroom-scheduler-eta.vercel.app"
-
+    "http://127.0.0.1:3000",
+    "https://classroom-scheduler-eta.vercel.app",
 ]
 
-CSRF_TRUSTED_ORIGINS = [
+DEFAULT_CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-    "https://classroom-scheduler-eta.vercel.app"
-
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "https://classroom-scheduler-eta.vercel.app",
 ]
+
+CORS_ALLOWED_ORIGINS = _get_list_env(
+    "CORS_ALLOWED_ORIGINS",
+    DEFAULT_CORS_ALLOWED_ORIGINS,
+)
+
+CSRF_TRUSTED_ORIGINS = _get_list_env(
+    "CSRF_TRUSTED_ORIGINS",
+    DEFAULT_CSRF_TRUSTED_ORIGINS,
+)
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [],
