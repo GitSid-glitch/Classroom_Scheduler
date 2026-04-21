@@ -37,6 +37,12 @@ Use the existing Render web service and update:
 - `CORS_ALLOWED_ORIGINS=https://<your-vercel-domain>,http://localhost:3000,http://127.0.0.1:3000`
 - `CSRF_TRUSTED_ORIGINS=https://<your-vercel-domain>,http://localhost:3000,http://127.0.0.1:3000`
 
+### After backend deploy
+
+- run `python manage.py migrate`
+- optionally run `python manage.py seed_demo_users` for a demo environment
+- confirm `/api/auth/login/` responds to POST requests
+
 ## Final Smoke Test
 
 ### Backend
@@ -46,11 +52,14 @@ Use the existing Render web service and update:
 
 ### Frontend
 
+- open `/login`
+- sign in with a demo or real role
 - open dashboard
 - open scheduler run
 - open conflicts
 - open analytics
 - open AI assistant
+- open published timetable as a faculty/student role
 
 ## Important Reminder
 

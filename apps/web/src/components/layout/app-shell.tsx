@@ -1,5 +1,9 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { cookies } from "next/headers";
+
+import { LogoutButton } from "@/components/auth/logout-button";
+import { authCookieKeys, canAccessPath, roleLabel, type AppRole } from "@/lib/auth/access";
 
 const navigationItems = [
   { href: "/dashboard", label: "Dashboard" },
@@ -22,13 +26,20 @@ interface AppShellProps {
   children: ReactNode;
 }
 
-export function AppShell({
+export async function AppShell({
   title,
   eyebrow,
   description,
   actions,
   children,
 }: AppShellProps) {
+  const cookieStore = await cookies();
+  const role = cookieStore.get(authCookieKeys.role)?.value as AppRole | undefined;
+  const displayName = cookieStore.get(authCookieKeys.displayName)?.value;
+  const visibleNavigation = role
+    ? navigationItems.filter((item) => canAccessPath(role, item.href))
+    : navigationItems;
+
   return (
     <main className="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-8 px-6 py-8 sm:px-10 lg:px-12">
       <header className="rounded-[2rem] border border-white/10 bg-white/6 p-6 backdrop-blur">
@@ -42,11 +53,19 @@ export function AppShell({
               <p className="max-w-3xl text-base leading-8 text-stone-300">{description}</p>
             </div>
           </div>
-          {actions ? <div className="flex flex-wrap gap-3">{actions}</div> : null}
+          <div className="flex flex-wrap items-center gap-3">
+            {role ? (
+              <div className="rounded-full border border-stone-600 px-4 py-2 text-sm text-stone-200">
+                {displayName ? decodeURIComponent(displayName) : "Signed in"} • {roleLabel(role)}
+              </div>
+            ) : null}
+            {actions}
+            {role ? <LogoutButton /> : null}
+          </div>
         </div>
 
         <nav className="mt-6 flex flex-wrap gap-3">
-          {navigationItems.map((item) => (
+          {visibleNavigation.map((item) => (
             <Link
               key={item.href}
               href={item.href}

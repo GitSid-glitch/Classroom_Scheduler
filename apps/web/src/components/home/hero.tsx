@@ -18,10 +18,16 @@ export function Hero() {
         </div>
         <div className="flex flex-col gap-4 sm:flex-row">
           <Link
-            href="/dashboard"
+            href="/login"
             className="inline-flex items-center justify-center rounded-full bg-amber-300 px-7 py-3 text-sm font-semibold text-stone-950 transition hover:bg-amber-200"
           >
-            Open Product Dashboard
+            Sign In To Platform
+          </Link>
+          <Link
+            href="/published-timetable"
+            className="inline-flex items-center justify-center rounded-full border border-emerald-400/40 px-7 py-3 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-400/10"
+          >
+            Open Published View
           </Link>
           <a
             href="#platform"

@@ -22,6 +22,7 @@ It now models a more realistic academic operations workflow:
 - room inventory and room blackout windows
 - teacher unavailability constraints
 - locked/fixed sessions
+- role-aware access for admins, coordinators, faculty, and students
 - batch and teacher overlap prevention
 - room feature requirements
 - schedule conflict analysis
@@ -46,6 +47,8 @@ Key routes:
 - `/scheduler/conflicts`
 - `/analytics`
 - `/ai-assistant`
+- `/login`
+- `/published-timetable`
 
 ### Backend
 
@@ -147,6 +150,32 @@ The backend already supports environment-driven settings for:
 - `DEBUG`
 - `ALLOWED_HOSTS`
 
+## Role-Based Access
+
+The platform now includes:
+
+- Django-backed credential validation
+- stored user roles through `UserProfile`
+- route-guarded Next.js access for `ADMIN`, `COORDINATOR`, `FACULTY`, and `STUDENT`
+- role-sensitive navigation and published-timetable access
+
+### Seed Demo Users
+
+Use these commands locally to create test accounts:
+
+```bash
+cd /Users/siddharthshukla/Desktop/Everything/classroom-scheduler
+python3 backend/manage.py migrate
+python3 backend/manage.py seed_demo_users
+```
+
+Demo credentials:
+
+- `admin / scheduler123`
+- `coordinator / scheduler123`
+- `faculty / scheduler123`
+- `student / scheduler123`
+
 ## Deployment
 
 The goal is to keep the same public URLs while upgrading the codebase.
@@ -203,8 +232,7 @@ This project is a strong portfolio piece because it shows:
 
 The strongest future upgrades would be:
 
-- authentication and role-based access control
 - CSV import intelligence and schema mapping
-- manual drag/drop rescheduling
-- timetable publishing views for faculty/students
+- manual drag/drop timetable interactions
+- deeper timetable comparison and approval workflows
 - deeper AI workflows backed by an actual model provider
