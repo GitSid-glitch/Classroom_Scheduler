@@ -3,14 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
-import { SchedulerApiClient } from "@/lib/api/scheduler-api-client";
-import { authCookieKeys, roleLabel } from "@/lib/auth/access";
-
-const apiClient = new SchedulerApiClient();
-
-function persistCookie(name: string, value: string) {
-  document.cookie = `${name}=${encodeURIComponent(value)}; path=/; max-age=${60 * 60 * 8}; samesite=lax`;
-}
+import { roleLabel } from "@/lib/auth/access";
 
 export function LoginForm() {
   const router = useRouter();
@@ -27,13 +20,27 @@ export function LoginForm() {
 
     startTransition(async () => {
       try {
-        const identity = await apiClient.authenticateUser(form);
-        persistCookie(authCookieKeys.username, identity.username);
-        persistCookie(authCookieKeys.displayName, identity.displayName);
-        persistCookie(authCookieKeys.role, identity.role);
+        const response = await fetch("/api/session/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(form),
+        });
+
+        const payload = (await response.json()) as {
+          username?: string;
+          displayName?: string;
+          role?: "ADMIN" | "COORDINATOR" | "FACULTY" | "STUDENT";
+          error?: string;
+        };
+
+        if (!response.ok || !payload.role) {
+          throw new Error(payload.error ?? "Login failed.");
+        }
 
         const destination =
-          identity.role === "ADMIN" || identity.role === "COORDINATOR"
+          payload.role === "ADMIN" || payload.role === "COORDINATOR"
             ? "/dashboard"
             : "/published-timetable";
 

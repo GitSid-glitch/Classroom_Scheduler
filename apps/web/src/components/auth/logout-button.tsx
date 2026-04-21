@@ -2,19 +2,13 @@
 
 import { useRouter } from "next/navigation";
 
-import { authCookieKeys } from "@/lib/auth/access";
-
-function expireCookie(name: string) {
-  document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
-}
-
 export function LogoutButton() {
   const router = useRouter();
 
-  function handleLogout() {
-    expireCookie(authCookieKeys.username);
-    expireCookie(authCookieKeys.displayName);
-    expireCookie(authCookieKeys.role);
+  async function handleLogout() {
+    await fetch("/api/session/logout", {
+      method: "POST",
+    });
     router.replace("/login");
     router.refresh();
   }

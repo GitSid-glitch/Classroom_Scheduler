@@ -1,11 +1,19 @@
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
-import { authCookieKeys, canAccessPath, type AppRole } from "@/lib/auth/access";
+import {
+  authSessionCookieName,
+  canAccessPath,
+  readIdentityFromSessionValue,
+} from "@/lib/auth/access";
 
 const PUBLIC_PATHS = ["/", "/login"];
 
 export function middleware(request: NextRequest) {
+  return handleRequest(request);
+}
+
+async function handleRequest(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (
@@ -17,7 +25,9 @@ export function middleware(request: NextRequest) {
   }
 
   const isPublicPath = PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
-  const role = request.cookies.get(authCookieKeys.role)?.value as AppRole | undefined;
+  const sessionValue = request.cookies.get(authSessionCookieName)?.value;
+  const identity = await readIdentityFromSessionValue(sessionValue);
+  const role = identity?.role;
 
   if (!role && !isPublicPath) {
     const loginUrl = new URL("/login", request.url);

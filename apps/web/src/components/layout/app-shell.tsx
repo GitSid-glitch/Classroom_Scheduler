@@ -1,9 +1,9 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { cookies } from "next/headers";
 
 import { LogoutButton } from "@/components/auth/logout-button";
-import { authCookieKeys, canAccessPath, roleLabel, type AppRole } from "@/lib/auth/access";
+import { canAccessPath, roleLabel } from "@/lib/auth/access";
+import { getCurrentIdentity } from "@/lib/auth/server-session";
 
 const navigationItems = [
   { href: "/dashboard", label: "Dashboard" },
@@ -33,9 +33,9 @@ export async function AppShell({
   actions,
   children,
 }: AppShellProps) {
-  const cookieStore = await cookies();
-  const role = cookieStore.get(authCookieKeys.role)?.value as AppRole | undefined;
-  const displayName = cookieStore.get(authCookieKeys.displayName)?.value;
+  const identity = await getCurrentIdentity();
+  const role = identity?.role;
+  const displayName = identity?.displayName;
   const visibleNavigation = role
     ? navigationItems.filter((item) => canAccessPath(role, item.href))
     : navigationItems;
@@ -56,7 +56,7 @@ export async function AppShell({
           <div className="flex flex-wrap items-center gap-3">
             {role ? (
               <div className="rounded-full border border-stone-600 px-4 py-2 text-sm text-stone-200">
-                {displayName ? decodeURIComponent(displayName) : "Signed in"} • {roleLabel(role)}
+                {displayName ?? "Signed in"} • {roleLabel(role)}
               </div>
             ) : null}
             {actions}
