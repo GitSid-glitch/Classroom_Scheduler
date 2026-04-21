@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import (
+    AuditEvent,
     Room,
     RoomUnavailableWindow,
     Teacher,
@@ -54,6 +55,12 @@ class ClassSessionSerializer(serializers.ModelSerializer):
 class AssignmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Assignment
+        fields = "__all__"
+
+
+class AuditEventSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AuditEvent
         fields = "__all__"
 
 

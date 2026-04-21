@@ -3,10 +3,13 @@ services:
     name: smart-academic-scheduler-api
     env: python
     rootDir: backend
+    healthCheckPath: /api/health/
     buildCommand: pip install -r requirements.txt && python manage.py migrate
     startCommand: gunicorn classroom_scheduler.wsgi:application
     envVars:
+      - key: SECRET_KEY
+        generateValue: true
       - key: DEBUG
         value: "False"
       - key: ALLOWED_HOSTS
-        value: "127.0.0.1,localhost"
+        value: "smart-academic-scheduler-api.onrender.com,localhost,127.0.0.1"

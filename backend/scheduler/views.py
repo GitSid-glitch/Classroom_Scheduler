@@ -1,14 +1,17 @@
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
+from rest_framework.viewsets import ReadOnlyModelViewSet
 from rest_framework.permissions import AllowAny
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser
+from django.http import HttpResponse
 from django.contrib.auth import authenticate
 from django.utils import timezone
 
-from .models import Room, Teacher, Section, UserProfile, ClassSession, Schedule, Assignment
+from .models import AuditEvent, Room, Teacher, Section, UserProfile, ClassSession, Schedule, Assignment
 from .serializers import (
+    AuditEventSerializer,
     RoomSerializer,
     TeacherSerializer,
     SectionSerializer,
@@ -18,6 +21,7 @@ from .serializers import (
     AssignmentSerializer,
 )
 from scheduler.services.assistant_service import (
+    build_assistant_payload,
     explain_unscheduled_session,
     suggest_conflict_resolution,
 )
@@ -47,6 +51,16 @@ def _parse_int(value, *, default=0):
     if value in (None, ""):
         return default
     return int(value)
+
+
+def _log_audit_event(*, action, entity_type, entity_id, summary, metadata=None):
+    AuditEvent.objects.create(
+        action=action,
+        entity_type=entity_type,
+        entity_id=entity_id,
+        summary=summary,
+        metadata=metadata or {},
+    )
 
 
 class AuthLoginView(APIView):
@@ -97,6 +111,37 @@ class RoomViewSet(viewsets.ModelViewSet):
     queryset = Room.objects.all()
     serializer_class = RoomSerializer
 
+    def perform_create(self, serializer):
+        room = serializer.save()
+        _log_audit_event(
+            action="CREATED",
+            entity_type="ROOM",
+            entity_id=room.id,
+            summary=f"Created room {room.name}.",
+            metadata={"room_type": room.room_type, "capacity": room.capacity},
+        )
+
+    def perform_update(self, serializer):
+        room = serializer.save()
+        _log_audit_event(
+            action="UPDATED",
+            entity_type="ROOM",
+            entity_id=room.id,
+            summary=f"Updated room {room.name}.",
+            metadata={"room_type": room.room_type, "capacity": room.capacity},
+        )
+
+    def perform_destroy(self, instance):
+        room_id = instance.id
+        room_name = instance.name
+        super().perform_destroy(instance)
+        _log_audit_event(
+            action="DELETED",
+            entity_type="ROOM",
+            entity_id=room_id,
+            summary=f"Deleted room {room_name}.",
+        )
+
     @action(detail=False, methods=["post"], parser_classes=[MultiPartParser])
     def upload(self, request):
         reader, error_response = _get_uploaded_rows(request)
@@ -126,6 +171,37 @@ class RoomViewSet(viewsets.ModelViewSet):
 class TeacherViewSet(viewsets.ModelViewSet):
     queryset = Teacher.objects.all().order_by("name")
     serializer_class = TeacherSerializer
+
+    def perform_create(self, serializer):
+        teacher = serializer.save()
+        _log_audit_event(
+            action="CREATED",
+            entity_type="TEACHER",
+            entity_id=teacher.id,
+            summary=f"Created teacher {teacher.name}.",
+            metadata={"department": teacher.department},
+        )
+
+    def perform_update(self, serializer):
+        teacher = serializer.save()
+        _log_audit_event(
+            action="UPDATED",
+            entity_type="TEACHER",
+            entity_id=teacher.id,
+            summary=f"Updated teacher {teacher.name}.",
+            metadata={"department": teacher.department},
+        )
+
+    def perform_destroy(self, instance):
+        teacher_id = instance.id
+        teacher_name = instance.name
+        super().perform_destroy(instance)
+        _log_audit_event(
+            action="DELETED",
+            entity_type="TEACHER",
+            entity_id=teacher_id,
+            summary=f"Deleted teacher {teacher_name}.",
+        )
 
     @action(detail=False, methods=["post"], parser_classes=[MultiPartParser])
     def upload(self, request):
@@ -157,6 +233,37 @@ class SectionViewSet(viewsets.ModelViewSet):
     queryset = Section.objects.all().order_by("name")
     serializer_class = SectionSerializer
 
+    def perform_create(self, serializer):
+        section = serializer.save()
+        _log_audit_event(
+            action="CREATED",
+            entity_type="SECTION",
+            entity_id=section.id,
+            summary=f"Created section {section.name}.",
+            metadata={"program": section.program, "semester": section.semester},
+        )
+
+    def perform_update(self, serializer):
+        section = serializer.save()
+        _log_audit_event(
+            action="UPDATED",
+            entity_type="SECTION",
+            entity_id=section.id,
+            summary=f"Updated section {section.name}.",
+            metadata={"program": section.program, "semester": section.semester},
+        )
+
+    def perform_destroy(self, instance):
+        section_id = instance.id
+        section_name = instance.name
+        super().perform_destroy(instance)
+        _log_audit_event(
+            action="DELETED",
+            entity_type="SECTION",
+            entity_id=section_id,
+            summary=f"Deleted section {section_name}.",
+        )
+
     @action(detail=False, methods=["post"], parser_classes=[MultiPartParser])
     def upload(self, request):
         reader, error_response = _get_uploaded_rows(request)
@@ -186,6 +293,38 @@ class SectionViewSet(viewsets.ModelViewSet):
 class ClassSessionViewSet(viewsets.ModelViewSet):
     queryset = ClassSession.objects.all()
     serializer_class = ClassSessionSerializer
+
+    def perform_create(self, serializer):
+        session = serializer.save()
+        _log_audit_event(
+            action="CREATED",
+            entity_type="CLASS_SESSION",
+            entity_id=session.id,
+            summary=f"Created class session {session.subject} for {session.batch}.",
+            metadata={"day_of_week": session.day_of_week, "teacher": session.teacher},
+        )
+
+    def perform_update(self, serializer):
+        session = serializer.save()
+        _log_audit_event(
+            action="UPDATED",
+            entity_type="CLASS_SESSION",
+            entity_id=session.id,
+            summary=f"Updated class session {session.subject} for {session.batch}.",
+            metadata={"day_of_week": session.day_of_week, "teacher": session.teacher},
+        )
+
+    def perform_destroy(self, instance):
+        session_id = instance.id
+        subject = instance.subject
+        batch = instance.batch
+        super().perform_destroy(instance)
+        _log_audit_event(
+            action="DELETED",
+            entity_type="CLASS_SESSION",
+            entity_id=session_id,
+            summary=f"Deleted class session {subject} for {batch}.",
+        )
 
     @action(detail=False, methods=["post"], parser_classes=[MultiPartParser])
     def upload(self, request):
@@ -228,6 +367,11 @@ class ClassSessionViewSet(viewsets.ModelViewSet):
 class AssignmentViewSet(viewsets.ModelViewSet):
     queryset = Assignment.objects.all()
     serializer_class = AssignmentSerializer
+
+
+class AuditEventViewSet(ReadOnlyModelViewSet):
+    queryset = AuditEvent.objects.all()
+    serializer_class = AuditEventSerializer
 
 
 class ScheduleViewSet(viewsets.ModelViewSet):
@@ -279,6 +423,19 @@ class ScheduleViewSet(viewsets.ModelViewSet):
                 room_id=assignment["room"],
             )
 
+        _log_audit_event(
+            action="GENERATED",
+            entity_type="SCHEDULE",
+            entity_id=schedule.id,
+            summary=f"Generated draft schedule {schedule.name}.",
+            metadata={
+                "scheduled_count": len(schedule_result["assignments"]),
+                "unscheduled_count": len(schedule_result["unscheduled"]),
+                "min_rooms": schedule.min_rooms,
+                "max_value": schedule.max_value,
+            },
+        )
+
         return Response(
             self._serialize_schedule(
                 schedule,
@@ -321,16 +478,16 @@ class ScheduleViewSet(viewsets.ModelViewSet):
                     schedule_result["unscheduled"],
                 )
 
-        suggestion = suggest_conflict_resolution(schedule_result)
-
-        return Response(
-            {
-                "suggestion": suggestion,
-                "explanation": explanation,
-                "explanations": schedule_result["explanations"],
-            },
-            status=200,
+        payload = build_assistant_payload(
+            schedule_result,
+            explanation,
+            schedule_result["explanations"],
         )
+
+        if "suggestion" not in payload:
+            payload["suggestion"] = suggest_conflict_resolution(schedule_result)
+
+        return Response(payload, status=200)
 
     @action(detail=False, methods=["get"])
     def analytics(self, request):
@@ -349,8 +506,57 @@ class ScheduleViewSet(viewsets.ModelViewSet):
         schedule.status = "PUBLISHED"
         schedule.published_at = timezone.now()
         schedule.save(update_fields=["status", "published_at"])
+        _log_audit_event(
+            action="PUBLISHED",
+            entity_type="SCHEDULE",
+            entity_id=schedule.id,
+            summary=f"Published schedule {schedule.name}.",
+            metadata={"published_at": schedule.published_at.isoformat()},
+        )
 
         return Response(self._serialize_schedule(schedule), status=200)
+
+    @action(detail=True, methods=["get"])
+    def export_csv(self, request, pk=None):
+        schedule = self.get_object()
+        response = HttpResponse(content_type="text/csv")
+        response["Content-Disposition"] = f'attachment; filename="{schedule.name.lower().replace(" ", "-")}.csv"'
+
+        writer = csv.writer(response)
+        writer.writerow(
+            [
+                "subject",
+                "teacher",
+                "batch",
+                "day_of_week",
+                "start_time",
+                "end_time",
+                "room",
+                "schedule_status",
+            ]
+        )
+
+        assignments = schedule.assignments.select_related("class_session", "room").order_by(
+            "class_session__day_of_week",
+            "class_session__start_time",
+        )
+
+        for assignment in assignments:
+            class_session = assignment.class_session
+            writer.writerow(
+                [
+                    class_session.subject,
+                    class_session.teacher,
+                    class_session.batch,
+                    class_session.day_of_week,
+                    class_session.start_time,
+                    class_session.end_time,
+                    assignment.room.name,
+                    schedule.status,
+                ]
+            )
+
+        return response
 
     @action(detail=True, methods=["post"])
     def unpublish(self, request, pk=None):
@@ -358,6 +564,12 @@ class ScheduleViewSet(viewsets.ModelViewSet):
         schedule.status = "DRAFT"
         schedule.published_at = None
         schedule.save(update_fields=["status", "published_at"])
+        _log_audit_event(
+            action="UNPUBLISHED",
+            entity_type="SCHEDULE",
+            entity_id=schedule.id,
+            summary=f"Moved schedule {schedule.name} back to draft.",
+        )
 
         return Response(self._serialize_schedule(schedule), status=200)
 

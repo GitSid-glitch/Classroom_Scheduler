@@ -1,13 +1,14 @@
 from datetime import time
 
 from django.contrib.auth.models import User
+from django.core.management import call_command
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.exceptions import ValidationError
 from django.test import TestCase
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from scheduler.models import ClassSession, Room, RoomUnavailableWindow, Schedule, Teacher, Section, UserProfile
+from scheduler.models import Assignment, ClassSession, Room, RoomUnavailableWindow, Schedule, Teacher, Section, UserProfile
 from scheduler.services.assistant_service import (
     explain_unscheduled_session,
     suggest_conflict_resolution,
@@ -599,6 +600,19 @@ class CsvUploadApiTests(TestCase):
         self.assertTrue(session.is_locked)
         self.assertEqual(session.required_features, "projector")
 
+    def test_room_create_logs_audit_event(self):
+        response = self.client.post(
+            "/api/rooms/",
+            {"name": "C-301", "capacity": 48, "room_type": "THEORY", "features": "projector"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, 201)
+        audit_response = self.client.get("/api/audit-events/")
+        self.assertEqual(audit_response.status_code, 200)
+        self.assertEqual(audit_response.data[0]["entity_type"], "ROOM")
+        self.assertEqual(audit_response.data[0]["action"], "CREATED")
+
 
 class AuthApiTests(TestCase):
     def setUp(self):
@@ -635,3 +649,56 @@ class AuthApiTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 401)
+
+
+class ScheduleAuditTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+
+    def test_publish_logs_schedule_audit_event(self):
+        schedule = Schedule.objects.create(name="Semester Draft", max_value=12, min_rooms=2)
+
+        response = self.client.post(f"/api/schedules/{schedule.id}/publish/")
+
+        self.assertEqual(response.status_code, 200)
+        audit_response = self.client.get("/api/audit-events/")
+        self.assertEqual(audit_response.status_code, 200)
+        self.assertEqual(audit_response.data[0]["entity_type"], "SCHEDULE")
+        self.assertEqual(audit_response.data[0]["action"], "PUBLISHED")
+
+    def test_schedule_export_csv_returns_assignment_rows(self):
+        room = Room.objects.create(name="A-301", capacity=40, room_type="THEORY")
+        session = ClassSession.objects.create(
+            subject="Compiler Design",
+            teacher="Dr. Nair",
+            batch="B.Tech CSE 6A",
+            day_of_week="MON",
+            start_time=time(10, 0),
+            end_time=time(11, 0),
+            required_capacity=35,
+            required_type="THEORY",
+            value=8,
+        )
+        schedule = Schedule.objects.create(name="Export Draft", max_value=8, min_rooms=1)
+        Assignment.objects.create(schedule=schedule, class_session=session, room=room)
+
+        response = self.client.get(f"/api/schedules/{schedule.id}/export_csv/")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "text/csv")
+        self.assertIn("Compiler Design", response.content.decode("utf-8"))
+
+
+class DemoWorkspaceCommandTests(TestCase):
+    def test_seed_demo_workspace_populates_demo_entities_and_published_schedule(self):
+        call_command("seed_demo_workspace")
+
+        self.assertGreaterEqual(Room.objects.count(), 4)
+        self.assertGreaterEqual(Teacher.objects.count(), 4)
+        self.assertGreaterEqual(Section.objects.count(), 3)
+        self.assertGreaterEqual(ClassSession.objects.count(), 8)
+
+        published_schedule = Schedule.objects.get(name="Spring 2026 Demo Schedule")
+        self.assertEqual(published_schedule.status, "PUBLISHED")
+        self.assertIsNotNone(published_schedule.published_at)
+        self.assertGreater(published_schedule.assignments.count(), 0)

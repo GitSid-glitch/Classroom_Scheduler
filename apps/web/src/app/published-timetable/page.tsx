@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { AppShell } from "@/components/layout/app-shell";
 import { PublishedTimetableBrowser } from "@/components/scheduler/published-timetable-browser";
 import { SchedulerApiClient } from "@/lib/api/scheduler-api-client";
@@ -29,7 +31,22 @@ export default async function PublishedTimetablePage() {
       {publishedSchedules.length === 0 ? (
         <section className="rounded-[1.75rem] border border-stone-800 bg-stone-950 p-6">
           <div className="rounded-[1.25rem] border border-stone-700 bg-stone-900/70 p-4 text-sm text-stone-300">
-            No schedule has been published yet. Publish one from the dashboard release manager.
+            No schedule has been published yet. Generate a draft from the scheduler and publish it
+            from the dashboard release manager.
+          </div>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Link
+              href="/scheduler/run"
+              className="rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-stone-950 transition hover:bg-amber-200"
+            >
+              Generate draft schedule
+            </Link>
+            <Link
+              href="/dashboard"
+              className="rounded-full border border-stone-500 px-5 py-3 text-sm font-semibold text-stone-100 transition hover:border-stone-300 hover:bg-white/5"
+            >
+              Open release manager
+            </Link>
           </div>
         </section>
       ) : (

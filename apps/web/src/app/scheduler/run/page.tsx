@@ -4,6 +4,10 @@ import { AppShell } from "@/components/layout/app-shell";
 import { ConflictList } from "@/components/scheduler/conflict-list";
 import { ManualOverridePanel } from "@/components/scheduler/manual-override-panel";
 import { StatusBoard } from "@/components/scheduler/status-board";
+import {
+  WeeklyTimetableGrid,
+  type WeeklyTimetableEntry,
+} from "@/components/scheduler/weekly-timetable-grid";
 import { AcademicRepository } from "@/lib/repositories/academic-repository";
 import { SchedulerApiClient } from "@/lib/api/scheduler-api-client";
 
@@ -15,6 +19,40 @@ export default async function SchedulerRunPage() {
     repository.getCourseOfferings(),
     repository.getRooms(),
   ]);
+
+  if (offerings.length === 0 || rooms.length === 0) {
+    return (
+      <AppShell
+        eyebrow="Scheduler / Run"
+        title="Draft generation and review workflow"
+        description="The scheduler needs both course offerings and rooms before it can generate a draft."
+        actions={
+          <>
+            <Link
+              href="/setup/courses"
+              className="rounded-full bg-amber-300 px-5 py-3 text-sm font-semibold text-stone-950 transition hover:bg-amber-200"
+            >
+              Open course setup
+            </Link>
+            <Link
+              href="/setup/rooms"
+              className="rounded-full border border-stone-500 px-5 py-3 text-sm font-semibold text-stone-100 transition hover:border-stone-300 hover:bg-white/5"
+            >
+              Open room setup
+            </Link>
+          </>
+        }
+      >
+        <section className="rounded-[1.75rem] border border-stone-800 bg-stone-950 p-6">
+          <div className="rounded-[1.25rem] border border-dashed border-stone-700 p-5 text-sm leading-7 text-stone-300">
+            {offerings.length === 0
+              ? "No course offerings are available yet. Add or import class sessions first."
+              : "No rooms are available yet. Add or import rooms first."}
+          </div>
+        </section>
+      </AppShell>
+    );
+  }
 
   let maxValue = offerings.reduce((sum, offering) => sum + offering.priorityScore, 0);
   let minRooms = Math.max(1, Math.ceil(offerings.length / 2));
@@ -29,6 +67,7 @@ export default async function SchedulerRunPage() {
     title: string;
     description: string;
   }> = [];
+  let draftEntries: WeeklyTimetableEntry[] = [];
 
   try {
     const schedule = await apiClient.runOptimizedSchedule();
@@ -46,6 +85,26 @@ export default async function SchedulerRunPage() {
       title: item.type.replaceAll("_", " "),
       description: item.message,
     }));
+    draftEntries = schedule.assignments
+      .map((assignment) => {
+        const offering = offerings.find((item) => item.id === String(assignment.class_session));
+        const room = rooms.find((item) => item.id === String(assignment.room));
+
+        if (!offering || !room) {
+          return null;
+        }
+
+        return {
+          id: String(assignment.id),
+          title: offering.title,
+          subtitle: `${offering.sectionName ?? offering.sectionId} • ${offering.teacherName ?? offering.teacherId}`,
+          meta: `Room ${room.name}`,
+          dayCode: offering.dayCode,
+          startTime: offering.startTime,
+          endTime: offering.endTime,
+        };
+      })
+      .filter((entry): entry is WeeklyTimetableEntry => entry !== null);
   } catch {
     scheduledCount = offerings.filter((offering) => offering.requiredRoomType !== "AUDITORIUM").length;
     unscheduledConflicts = [
@@ -110,6 +169,12 @@ export default async function SchedulerRunPage() {
             Publish/unpublish actions are now supported on the backend API
           </div>
         </div>
+        {scheduleStatus === "DRAFT" ? (
+          <p className="mt-4 text-sm leading-7 text-stone-300">
+            Each visit to this page generates a fresh draft schedule. Publish a draft from the
+            dashboard when you are satisfied with its conflicts, value capture, and room usage.
+          </p>
+        ) : null}
       </section>
 
       <section className="rounded-[1.75rem] border border-white/10 bg-white/6 p-6 backdrop-blur">
@@ -155,6 +220,13 @@ export default async function SchedulerRunPage() {
           ))}
         </div>
       </section>
+
+      <WeeklyTimetableGrid
+        title="Draft calendar preview"
+        description="This weekly board turns the generated assignments into a planning artifact coordinators can actually scan before publishing."
+        entries={draftEntries}
+        emptyMessage="No draft assignments are available yet. Add rooms and course offerings, then rerun the scheduler."
+      />
 
       <section className="rounded-[1.75rem] border border-stone-800 bg-stone-950 p-6">
         <h2 className="text-2xl font-semibold text-stone-50">How this grows into a real product</h2>

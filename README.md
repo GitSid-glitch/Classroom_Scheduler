@@ -60,6 +60,7 @@ Key capabilities:
 - conflict analysis via `analyze`
 - assistant suggestions/explanations via `assistant`
 - analytics snapshot via `analytics`
+- health endpoint via `health`
 - publish/unpublish workflow for schedules
 
 ## Tech Stack

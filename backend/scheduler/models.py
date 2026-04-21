@@ -175,6 +175,21 @@ class Assignment(models.Model):
         unique_together = ("schedule", "class_session", "room")
 
 
+class AuditEvent(models.Model):
+    entity_type = models.CharField(max_length=50)
+    entity_id = models.PositiveIntegerField()
+    action = models.CharField(max_length=50)
+    summary = models.CharField(max_length=255)
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-created_at", "-id")
+
+    def __str__(self):
+        return f"{self.action} {self.entity_type}#{self.entity_id}"
+
+
 class UserProfile(models.Model):
     ROLE_ADMIN = "ADMIN"
     ROLE_COORDINATOR = "COORDINATOR"

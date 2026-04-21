@@ -43,7 +43,16 @@ When backend updates are ready:
 - keep the same Render service
 - keep the same Render URL
 - update build/start commands only if needed
+- use `/api/health/` as the Render health check path
 - redeploy the same service
+
+### Recommended backend rollout order
+
+1. Update Render environment variables.
+2. Deploy the backend and let migrations run.
+3. Confirm `https://<render-domain>/api/health/` returns a healthy JSON response.
+4. Confirm `https://<render-domain>/api/auth/login/` responds to POST requests.
+5. Optionally run `python manage.py seed_demo_users` for a demo/staging environment.
 
 ## Important Rule
 

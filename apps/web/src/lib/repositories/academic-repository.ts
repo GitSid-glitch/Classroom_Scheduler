@@ -11,7 +11,8 @@ export class AcademicRepository {
 
   public async getRooms(): Promise<Room[]> {
     try {
-      return await this.apiClient.getRooms();
+      const payload = await this.apiClient.getRooms();
+      return payload.length > 0 ? payload : rooms;
     } catch {
       return rooms;
     }

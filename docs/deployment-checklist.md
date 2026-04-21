@@ -47,8 +47,11 @@ Use the existing Render web service and update:
 
 ### Backend
 
+- open `https://<render-domain>/api/health/`
+- confirm `{ "status": "ok" }` style JSON returns
 - open `https://<render-domain>/api/schedules/analyze/`
-- confirm JSON returns instead of CORS/500 errors
+- confirm the API responds instead of CORS/500 errors
+- test `POST https://<render-domain>/api/auth/login/` with a valid demo or real user
 
 ### Frontend
 
