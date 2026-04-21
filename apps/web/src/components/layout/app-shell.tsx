@@ -11,6 +11,7 @@ const navigationItems = [
   { href: "/scheduler/conflicts", label: "Conflicts" },
   { href: "/analytics", label: "Analytics" },
   { href: "/ai-assistant", label: "AI Assistant" },
+  { href: "/published-timetable", label: "Published" },
 ];
 
 interface AppShellProps {
