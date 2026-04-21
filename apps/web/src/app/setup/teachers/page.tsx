@@ -1,6 +1,6 @@
 import { AppShell } from "@/components/layout/app-shell";
-import { EntityTable } from "@/components/setup/entity-table";
 import { SummaryCards } from "@/components/setup/summary-cards";
+import { TeacherManager } from "@/components/setup/teacher-manager";
 import { AcademicRepository } from "@/lib/repositories/academic-repository";
 
 const repository = new AcademicRepository();
@@ -46,25 +46,7 @@ export default async function TeachersPage() {
           },
         ]}
       />
-
-      <EntityTable
-        title="Faculty registry"
-        description="Later we can extend this with slot-level availability, preferred time bands, and leave-aware scheduling."
-        items={teachers}
-        columns={[
-          { key: "name", header: "Teacher", render: (teacher) => teacher.name },
-          { key: "department", header: "Department", render: (teacher) => teacher.department },
-          { key: "load", header: "Max Daily Load", render: (teacher) => teacher.maxDailyLoad },
-          {
-            key: "availability",
-            header: "Unavailable Days",
-            render: (teacher) =>
-              teacher.unavailableDayCodes.length > 0
-                ? teacher.unavailableDayCodes.join(", ")
-                : "Fully available",
-          },
-        ]}
-      />
+      <TeacherManager initialTeachers={teachers} />
     </AppShell>
   );
 }

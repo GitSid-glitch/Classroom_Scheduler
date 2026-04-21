@@ -66,6 +66,22 @@ type ApiClassSession = {
   required_features: string;
 };
 
+type ApiTeacher = {
+  id: number;
+  name: string;
+  department: string;
+  max_daily_load: number;
+  unavailable_days: string;
+};
+
+type ApiSection = {
+  id: number;
+  name: string;
+  program: string;
+  semester: number;
+  size: number;
+};
+
 export class SchedulerApiClient {
   private readonly config: AppConfig;
 
@@ -285,11 +301,152 @@ export class SchedulerApiClient {
   }
 
   public async getTeachers(): Promise<Teacher[]> {
-    return [];
+    const payload = await this.request<ApiTeacher[]>("/teachers/");
+    return payload.map((teacher) => ({
+      id: String(teacher.id),
+      name: teacher.name,
+      department: teacher.department,
+      maxDailyLoad: teacher.max_daily_load,
+      unavailableDayCodes: teacher.unavailable_days
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean) as Teacher["unavailableDayCodes"],
+    }));
   }
 
   public async getSections(): Promise<Section[]> {
-    return [];
+    const payload = await this.request<ApiSection[]>("/sections/");
+    return payload.map((section) => ({
+      id: String(section.id),
+      name: section.name,
+      program: section.program,
+      semester: section.semester,
+      size: section.size,
+    }));
+  }
+
+  public async createTeacher(payload: {
+    name: string;
+    department: string;
+    maxDailyLoad: number;
+    unavailableDayCodes: Teacher["unavailableDayCodes"];
+  }): Promise<Teacher> {
+    const teacher = await this.request<ApiTeacher>("/teachers/", {
+      method: "POST",
+      body: JSON.stringify({
+        name: payload.name,
+        department: payload.department,
+        max_daily_load: payload.maxDailyLoad,
+        unavailable_days: payload.unavailableDayCodes.join(","),
+      }),
+    });
+
+    return {
+      id: String(teacher.id),
+      name: teacher.name,
+      department: teacher.department,
+      maxDailyLoad: teacher.max_daily_load,
+      unavailableDayCodes: teacher.unavailable_days
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean) as Teacher["unavailableDayCodes"],
+    };
+  }
+
+  public async updateTeacher(
+    teacherId: string,
+    payload: {
+      name: string;
+      department: string;
+      maxDailyLoad: number;
+      unavailableDayCodes: Teacher["unavailableDayCodes"];
+    },
+  ): Promise<Teacher> {
+    const teacher = await this.request<ApiTeacher>(`/teachers/${teacherId}/`, {
+      method: "PUT",
+      body: JSON.stringify({
+        name: payload.name,
+        department: payload.department,
+        max_daily_load: payload.maxDailyLoad,
+        unavailable_days: payload.unavailableDayCodes.join(","),
+      }),
+    });
+
+    return {
+      id: String(teacher.id),
+      name: teacher.name,
+      department: teacher.department,
+      maxDailyLoad: teacher.max_daily_load,
+      unavailableDayCodes: teacher.unavailable_days
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean) as Teacher["unavailableDayCodes"],
+    };
+  }
+
+  public async deleteTeacher(teacherId: string): Promise<void> {
+    await this.request<void>(`/teachers/${teacherId}/`, {
+      method: "DELETE",
+    });
+  }
+
+  public async createSection(payload: {
+    name: string;
+    program: string;
+    semester: number;
+    size: number;
+  }): Promise<Section> {
+    const section = await this.request<ApiSection>("/sections/", {
+      method: "POST",
+      body: JSON.stringify({
+        name: payload.name,
+        program: payload.program,
+        semester: payload.semester,
+        size: payload.size,
+      }),
+    });
+
+    return {
+      id: String(section.id),
+      name: section.name,
+      program: section.program,
+      semester: section.semester,
+      size: section.size,
+    };
+  }
+
+  public async updateSection(
+    sectionId: string,
+    payload: {
+      name: string;
+      program: string;
+      semester: number;
+      size: number;
+    },
+  ): Promise<Section> {
+    const section = await this.request<ApiSection>(`/sections/${sectionId}/`, {
+      method: "PUT",
+      body: JSON.stringify({
+        name: payload.name,
+        program: payload.program,
+        semester: payload.semester,
+        size: payload.size,
+      }),
+    });
+
+    return {
+      id: String(section.id),
+      name: section.name,
+      program: section.program,
+      semester: section.semester,
+      size: section.size,
+    };
+  }
+
+  public async deleteSection(sectionId: string): Promise<void> {
+    await this.request<void>(`/sections/${sectionId}/`, {
+      method: "DELETE",
+    });
   }
 
   private async request<T>(path: string, init?: RequestInit): Promise<T> {
