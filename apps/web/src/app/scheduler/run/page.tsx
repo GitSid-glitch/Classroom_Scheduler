@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { AppShell } from "@/components/layout/app-shell";
 import { ConflictList } from "@/components/scheduler/conflict-list";
+import { ManualOverridePanel } from "@/components/scheduler/manual-override-panel";
 import { StatusBoard } from "@/components/scheduler/status-board";
 import { AcademicRepository } from "@/lib/repositories/academic-repository";
 import { SchedulerApiClient } from "@/lib/api/scheduler-api-client";
@@ -10,7 +11,10 @@ const repository = new AcademicRepository();
 const apiClient = new SchedulerApiClient();
 
 export default async function SchedulerRunPage() {
-  const offerings = await repository.getCourseOfferings();
+  const [offerings, rooms] = await Promise.all([
+    repository.getCourseOfferings(),
+    repository.getRooms(),
+  ]);
 
   let maxValue = offerings.reduce((sum, offering) => sum + offering.priorityScore, 0);
   let minRooms = Math.max(1, Math.ceil(offerings.length / 2));
@@ -89,6 +93,8 @@ export default async function SchedulerRunPage() {
         minRooms={minRooms}
         maxValue={maxValue}
       />
+
+      <ManualOverridePanel initialOfferings={offerings} rooms={rooms} />
 
       <section className="rounded-[1.75rem] border border-white/10 bg-white/6 p-6 backdrop-blur">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">

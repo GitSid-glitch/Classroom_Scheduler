@@ -44,7 +44,13 @@ def assign_rooms(day_classes, rooms):
             available_rooms.append(freed_room)
             available_rooms.sort(key=lambda r: r.capacity)
         assigned_room = None
-        for i, room in enumerate(available_rooms):
+        candidate_rooms = available_rooms
+
+        if getattr(cls, "fixed_room_id", None):
+            candidate_rooms = [room for room in available_rooms if room.id == cls.fixed_room_id]
+
+        for room in candidate_rooms:
+            i = available_rooms.index(room)
             if room.capacity >= cls.required_capacity and (
                 cls.required_type == "ANY" or room.room_type == cls.required_type
             ) and _room_is_available(room, cls) and _room_matches_features(room, cls):

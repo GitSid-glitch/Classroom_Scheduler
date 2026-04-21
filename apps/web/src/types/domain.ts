@@ -40,6 +40,8 @@ export interface CourseOffering {
   sectionId: string;
   sectionRecordId?: string | null;
   sectionName?: string;
+  fixedRoomId?: string | null;
+  fixedRoomName?: string;
   dayCode: DayCode;
   startTime: string;
   endTime: string;

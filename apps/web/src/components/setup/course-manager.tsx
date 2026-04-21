@@ -64,12 +64,16 @@ export function CourseManager({ initialOfferings, teachers, sections }: CourseMa
 
     startTransition(async () => {
       try {
+        const currentOffering = editingId
+          ? offerings.find((offering) => offering.id === editingId)
+          : null;
         const payload = {
           title: form.title,
           teacher: form.teacher,
           teacherRecordId: form.teacherRecordId || null,
           batch: form.batch,
           sectionRecordId: form.sectionRecordId || null,
+          fixedRoomId: currentOffering?.fixedRoomId ?? null,
           dayCode: form.dayCode,
           startTime: form.startTime,
           endTime: form.endTime,

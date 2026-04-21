@@ -1,4 +1,5 @@
 import { AppConfig } from "@/lib/config/app-config";
+import type { AuthIdentity } from "@/lib/auth/access";
 import type {
   CourseOffering,
   Room,
@@ -55,6 +56,7 @@ type ApiClassSession = {
   subject: string;
   teacher: string;
   batch: string;
+  fixed_room: number | null;
   teacher_record: number | null;
   section_record: number | null;
   day_of_week: CourseOffering["dayCode"];
@@ -82,6 +84,12 @@ type ApiSection = {
   program: string;
   semester: number;
   size: number;
+};
+
+type ApiAuthIdentity = {
+  username: string;
+  display_name: string;
+  role: AuthIdentity["role"];
 };
 
 export class SchedulerApiClient {
@@ -178,6 +186,7 @@ export class SchedulerApiClient {
     teacherRecordId?: string | null;
     batch: string;
     sectionRecordId?: string | null;
+    fixedRoomId?: string | null;
     dayCode: CourseOffering["dayCode"];
     startTime: string;
     endTime: string;
@@ -194,6 +203,7 @@ export class SchedulerApiClient {
         subject: payload.title,
         teacher: payload.teacher,
         batch: payload.batch,
+        fixed_room: payload.fixedRoomId ? Number(payload.fixedRoomId) : null,
         teacher_record: payload.teacherRecordId ? Number(payload.teacherRecordId) : null,
         section_record: payload.sectionRecordId ? Number(payload.sectionRecordId) : null,
         day_of_week: payload.dayCode,
@@ -219,6 +229,7 @@ export class SchedulerApiClient {
       teacherRecordId?: string | null;
       batch: string;
       sectionRecordId?: string | null;
+      fixedRoomId?: string | null;
       dayCode: CourseOffering["dayCode"];
       startTime: string;
       endTime: string;
@@ -236,6 +247,7 @@ export class SchedulerApiClient {
         subject: payload.title,
         teacher: payload.teacher,
         batch: payload.batch,
+        fixed_room: payload.fixedRoomId ? Number(payload.fixedRoomId) : null,
         teacher_record: payload.teacherRecordId ? Number(payload.teacherRecordId) : null,
         section_record: payload.sectionRecordId ? Number(payload.sectionRecordId) : null,
         day_of_week: payload.dayCode,
@@ -600,6 +612,7 @@ export class SchedulerApiClient {
       sectionId: session.batch,
       sectionRecordId: session.section_record ? String(session.section_record) : null,
       sectionName: session.batch,
+      fixedRoomId: session.fixed_room ? String(session.fixed_room) : null,
       dayCode: session.day_of_week,
       startTime: session.start_time,
       endTime: session.end_time,

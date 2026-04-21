@@ -300,6 +300,27 @@ class SchedulerServiceTests(TestCase):
         self.assertEqual(result["assignments"], [])
         self.assertEqual(len(result["unscheduled"]), 1)
 
+    def test_fixed_room_override_is_respected(self):
+        fixed_room = Room.objects.create(name="A-105", capacity=35, room_type="THEORY")
+        fallback_room = Room.objects.create(name="A-106", capacity=80, room_type="THEORY")
+        session = ClassSession.objects.create(
+            subject="Linear Algebra",
+            teacher="Teacher Z",
+            batch="B18",
+            day_of_week="THU",
+            start_time=time(10, 0),
+            end_time=time(11, 0),
+            required_capacity=30,
+            required_type="ANY",
+            value=5,
+            fixed_room=fixed_room,
+        )
+
+        result = run_heap_scheduler([session], [fallback_room, fixed_room])
+
+        self.assertEqual(len(result["assignments"]), 1)
+        self.assertEqual(result["assignments"][0]["room"], fixed_room.id)
+
 
 class ConflictServiceTests(TestCase):
     def test_analyze_conflicts_reports_teacher_and_batch_overlaps(self):

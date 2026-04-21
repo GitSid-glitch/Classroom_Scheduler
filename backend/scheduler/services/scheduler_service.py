@@ -121,10 +121,13 @@ def _build_unscheduled_entries(candidate_classes, scheduled_assignments, reason)
 
     for cls in candidate_classes:
         if cls.id not in scheduled_ids:
+            final_reason = reason
+            if getattr(cls, "fixed_room_id", None):
+                final_reason = "The coordinator-selected fixed room was unavailable or incompatible."
             unscheduled.append(
                 {
                     "class": cls,
-                    "reason": reason,
+                    "reason": final_reason,
                 }
             )
 
