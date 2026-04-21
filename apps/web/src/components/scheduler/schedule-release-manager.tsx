@@ -99,6 +99,14 @@ export function ScheduleReleaseManager({
               >
                 {schedule.status === "PUBLISHED" ? "Unpublish" : "Publish"}
               </button>
+              <a
+                href={apiClient.getScheduleExportUrl(schedule.id)}
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-full border border-stone-500 px-5 py-3 text-sm font-semibold text-stone-100 transition hover:border-stone-300 hover:bg-white/5"
+              >
+                Export CSV
+              </a>
             </div>
           </article>
         ))}

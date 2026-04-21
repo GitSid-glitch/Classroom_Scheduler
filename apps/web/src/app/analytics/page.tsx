@@ -1,3 +1,4 @@
+import { ExportAnalyticsButton } from "@/components/analytics/export-analytics-button";
 import { AppShell } from "@/components/layout/app-shell";
 import { SchedulerApiClient } from "@/lib/api/scheduler-api-client";
 
@@ -35,6 +36,7 @@ export default async function AnalyticsPage() {
       eyebrow="Analytics"
       title="Operational metrics for timetable quality"
       description="This is where the project starts to look like a real academic operations product: measurable coverage, room utilization, and faculty load instead of just a generated schedule."
+      actions={<ExportAnalyticsButton analytics={analytics} />}
     >
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <article className="rounded-[1.5rem] border border-white/10 bg-white/6 p-5 backdrop-blur">
