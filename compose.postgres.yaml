@@ -1,0 +1,30 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME:-scheduler}
+      POSTGRES_USER: ${DB_USER:-scheduler}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-local-postgres-password-change-me}
+    volumes:
+      - scheduler_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  api:
+    environment:
+      DB_ENGINE: postgresql
+      DB_NAME: ${DB_NAME:-scheduler}
+      DB_USER: ${DB_USER:-scheduler}
+      DB_PASSWORD: ${DB_PASSWORD:-local-postgres-password-change-me}
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_CONN_MAX_AGE: "60"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  scheduler_postgres_data:

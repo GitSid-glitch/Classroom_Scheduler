@@ -1,66 +1,72 @@
-# Deployment Migration Notes
+# Deployment Notes
 
-## Goal
+The resume deployment uses Render Free for both the Next.js frontend and Django
+API, defined in the repository's root `render.yaml`. It uses synthetic data only.
+See the [free Render deployment checklist](deployment-checklist.md) for setup,
+secrets, and smoke checks.
 
-Preserve the same public deployment URLs while migrating the codebase to:
+The API uses SQLite on Render's ephemeral filesystem. `DEMO_MODE=true` causes the
+container startup script to migrate, clear, and repopulate the database whenever
+the service starts. Visitor edits are temporary; this is deliberate for the
+portfolio demo. The local Docker Compose stack remains the persistent development
+environment.
 
-- `Vercel` for the frontend
-- `Render` for the Django backend
-- `apps/web` as the new `Next.js` frontend root
+## Optional Local PostgreSQL Stack
 
-## Current Safe Strategy
+SQLite remains the zero-setup default. For a PostgreSQL rehearsal, choose a
+local `DB_PASSWORD` and use the overlay:
 
-Build the new frontend in parallel without touching the current deployed frontend folder yet.
+```bash
+DB_PASSWORD='choose-a-local-password' docker compose \
+  -f compose.yaml -f compose.postgres.yaml up --build
+```
 
-That means:
+The overlay adds a private PostgreSQL 17 container and persistent volume. It
+does not publish the database port to the host. Django keeps using the same
+migrations and application models. Bring the stack down normally to preserve
+the volume. Remove `scheduler_postgres_data` only when intentionally deleting
+that PostgreSQL database.
 
-- old Vite frontend can keep serving the current Vercel deployment
-- Django backend can keep serving the current Render deployment
-- the new `Next.js` app can be developed and verified locally first
+## Moving Local SQLite Data to PostgreSQL
 
-## Vercel Cutover
+Make a verified SQLite snapshot first using
+[`local-data-recovery.md`](local-data-recovery.md). Pause writes while exporting
+and importing so both databases represent the same point in time. Keep the
+SQLite volume untouched until the PostgreSQL copy has been reviewed.
 
-When the new frontend is ready:
+1. Export application records from the SQLite-backed app before switching the
+   Compose configuration:
 
-- keep the same Vercel project
-- keep the same Vercel domain / URL
-- change the project root directory to `apps/web`
-- update environment variables like `NEXT_PUBLIC_API_BASE_URL`
-- redeploy
+   ```bash
+   docker compose exec -T api python manage.py dumpdata \
+     --natural-foreign --natural-primary \
+     --exclude contenttypes --exclude auth.permission > scheduler-data.json
+   ```
 
-### Expected Vercel Commands
+2. Start PostgreSQL and apply migrations to its empty database:
 
-- install command: default `npm install`
-- build command: `npm run build`
-- output: handled by Next.js automatically
+   ```bash
+   DB_PASSWORD='choose-a-local-password' docker compose \
+     -f compose.yaml -f compose.postgres.yaml up --build -d
+   docker compose -f compose.yaml -f compose.postgres.yaml exec api \
+     python manage.py migrate
+   ```
 
-## Render Cutover
+3. Load the SQLite fixture into PostgreSQL and check its schema:
 
-The Render service can keep the same URL if the backend stays on the same service.
+   ```bash
+   docker compose -f compose.yaml -f compose.postgres.yaml exec -T api \
+     python manage.py loaddata --format json - < scheduler-data.json
+   docker compose -f compose.yaml -f compose.postgres.yaml exec api \
+     python manage.py check --database default
+   ```
 
-When backend updates are ready:
+4. Sign in and review terms, users/roles, teachers, rooms, courses, releases,
+   and audit history in the application. Re-run key schedule and access flows
+   before pointing any frontend at the PostgreSQL API.
 
-- keep the same Render service
-- keep the same Render URL
-- update build/start commands only if needed
-- use `/api/health/` as the Render health check path
-- redeploy the same service
-
-### Recommended backend rollout order
-
-1. Update Render environment variables.
-2. Deploy the backend and let migrations run.
-3. Confirm `https://<render-domain>/api/health/` returns a healthy JSON response.
-4. Confirm `https://<render-domain>/api/auth/login/` responds to POST requests.
-5. Optionally run `python manage.py seed_demo_users` for a demo/staging environment.
-
-## Important Rule
-
-Changing build commands or root directories does **not** require changing public URLs.
-
-As long as:
-
-- the same Vercel project is reused
-- the same Render service is reused
-
-the public links can remain stable.
+Delete `scheduler-data.json` after the migration if it contains user records;
+it includes credentials in hashed form and must still be treated as private.
+This fixture workflow is intended for a local migration rehearsal. For a hosted
+cutover, take database-native backups, restore into a separately protected
+PostgreSQL database, and plan a maintenance window and rollback separately.

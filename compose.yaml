@@ -1,0 +1,35 @@
+services:
+  api:
+    build:
+      context: ./backend
+    environment:
+      DEBUG: "True"
+      SECRET_KEY: ${DJANGO_SECRET_KEY:-local-compose-secret-change-before-deploy}
+      BACKEND_SERVICE_TOKEN: ${BACKEND_SERVICE_TOKEN:-local-compose-service-token-change-before-deploy}
+      DATABASE_PATH: /var/lib/scheduler/db.sqlite3
+      ALLOWED_HOSTS: localhost,127.0.0.1,api
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - scheduler_data:/var/lib/scheduler
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health/').read()"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+
+  web:
+    build:
+      context: ./apps/web
+    environment:
+      BACKEND_API_BASE_URL: http://api:8000/api
+      BACKEND_SERVICE_TOKEN: ${BACKEND_SERVICE_TOKEN:-local-compose-service-token-change-before-deploy}
+      AUTH_SESSION_SECRET: ${AUTH_SESSION_SECRET:-local-compose-session-secret-change-before-deploy}
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      api:
+        condition: service_healthy
+
+volumes:
+  scheduler_data:

@@ -1,15 +1,44 @@
 services:
   - type: web
     name: smart-academic-scheduler-api
-    env: python
-    rootDir: backend
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerContext: ./backend
+    dockerfilePath: ./backend/Dockerfile
+    autoDeployTrigger: checksPass
     healthCheckPath: /api/health/
-    buildCommand: pip install -r requirements.txt && python manage.py migrate
-    startCommand: gunicorn classroom_scheduler.wsgi:application
     envVars:
+      - key: DEBUG
+        value: "false"
+      - key: DEMO_MODE
+        value: "true"
+      - key: DB_ENGINE
+        value: sqlite
+      - key: DATABASE_PATH
+        value: /tmp/scheduler/db.sqlite3
+      - key: GROQ_MODEL
+        value: openai/gpt-oss-120b
       - key: SECRET_KEY
         generateValue: true
-      - key: DEBUG
-        value: "False"
-      - key: ALLOWED_HOSTS
-        value: "smart-academic-scheduler-api.onrender.com,localhost,127.0.0.1"
+      - key: BACKEND_SERVICE_TOKEN
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+
+  - type: web
+    name: smart-academic-scheduler
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerContext: ./apps/web
+    dockerfilePath: ./apps/web/Dockerfile
+    autoDeployTrigger: checksPass
+    healthCheckPath: /api/health
+    envVars:
+      - key: BACKEND_API_BASE_URL
+        value: https://smart-academic-scheduler-api.onrender.com/api
+      - key: BACKEND_SERVICE_TOKEN
+        sync: false
+      - key: AUTH_SESSION_SECRET
+        generateValue: true

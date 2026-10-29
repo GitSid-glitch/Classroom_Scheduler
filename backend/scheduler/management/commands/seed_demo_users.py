@@ -75,6 +75,6 @@ class Command(BaseCommand):
 
             self.stdout.write(
                 self.style.SUCCESS(
-                    f"Prepared {entry['username']} ({entry['role']}) with password {entry['password']}"
+                    f"Prepared demo account {entry['username']} ({entry['role']})."
                 )
             )

@@ -7,7 +7,7 @@ Smart Academic Scheduler is a full-stack academic operations platform for univer
 ## Strong Interview Talking Points
 
 - Migrated the frontend toward `Next.js + TypeScript + Tailwind`
-- Preserved the same deployment-link migration path for `Vercel` and `Render`
+- Prepared a free Render portfolio deployment with a synthetic, resettable demo workspace
 - Used `heap` and `dynamic programming` in a real scheduling problem
 - Added teacher availability, room blackout windows, locked sessions, batch conflict prevention, and room feature constraints
 - Built assistant-style explanations and suggestions on structured scheduling data

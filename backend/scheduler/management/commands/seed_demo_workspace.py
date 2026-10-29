@@ -1,7 +1,7 @@
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from scheduler.models import Assignment, ClassSession, Room, Schedule, Section, Teacher
+from scheduler.models import Assignment, ClassSession, Room, Schedule, Section, Teacher, get_current_academic_term
 from scheduler.services.conflict_service import analyze_conflicts
 from scheduler.services.scheduler_service import (
     build_schedule_explanations,
@@ -135,6 +135,7 @@ class Command(BaseCommand):
     help = "Seed a demo academic workspace with rooms, teachers, sections, class sessions, and a published schedule."
 
     def handle(self, *args, **options):
+        current_term = get_current_academic_term()
         room_by_name = {}
         teacher_by_name = {}
         section_by_name = {}
@@ -179,6 +180,7 @@ class Command(BaseCommand):
             fixed_room = room_by_name[fixed_room_name] if fixed_room_name else None
 
             ClassSession.objects.update_or_create(
+                term=current_term,
                 subject=payload["subject"],
                 teacher=payload["teacher"],
                 batch=payload["batch"],
@@ -209,7 +211,8 @@ class Command(BaseCommand):
         )
 
         schedule, _ = Schedule.objects.update_or_create(
-            name="Spring 2026 Demo Schedule",
+            name=f"{current_term.name} Demo Schedule",
+            term=current_term,
             defaults={
                 "max_value": int(schedule_result["total_value"]),
                 "min_rooms": schedule_result["max_rooms"],
