@@ -31,6 +31,20 @@ function timeLabel(value: string) {
   return value.slice(0, 5);
 }
 
+async function responsePayload(response: Response) {
+  try {
+    return await response.json() as Record<string, unknown>;
+  } catch {
+    return { detail: `The scheduling service returned an unreadable response (${response.status}).` };
+  }
+}
+
+function responseError(payload: Record<string, unknown>, fallback: string) {
+  const detail = payload.error ?? payload.detail;
+  if (typeof detail === "string" && detail.trim()) return detail;
+  return fallback;
+}
+
 export function AssistantRequestPlanner() {
   const router = useRouter();
   const [request, setRequest] = useState("");
@@ -51,9 +65,10 @@ export function AssistantRequestPlanner() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ request }),
       });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error ?? "Could not interpret this schedule request.");
+      const payload = await responsePayload(response);
+      if (!response.ok) throw new Error(responseError(payload, `Could not interpret this request (${response.status}).`));
       const nextPlan = payload as Plan;
+      if (!Array.isArray(nextPlan.matched_classes)) throw new Error(responseError(payload, "The assistant returned incomplete schedule matches."));
       setPlan(nextPlan);
       setSelectedIds(nextPlan.matched_classes.map((item) => item.id));
     } catch (cause) {
@@ -73,8 +88,8 @@ export function AssistantRequestPlanner() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ class_session_ids: selectedIds, name: "AI-assisted draft" }),
       });
-      const payload = await response.json();
-      if (!response.ok) throw new Error(payload.error ?? "Could not generate the requested draft.");
+      const payload = await responsePayload(response);
+      if (!response.ok) throw new Error(responseError(payload, `Could not generate the requested draft (${response.status}).`));
       setStatus(`Draft #${payload.id} generated. Review its placements and conflicts before submitting for approval.`);
       router.refresh();
     } catch (cause) {
