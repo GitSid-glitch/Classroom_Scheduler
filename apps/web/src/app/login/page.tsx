@@ -1,20 +1,23 @@
 import Link from "next/link";
 
+import type { Metadata } from "next";
+
 import { LoginForm } from "@/components/auth/login-form";
+
+export const metadata: Metadata = { title: "Sign in" };
 
 export default function LoginPage() {
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-7xl flex-1 flex-col items-center justify-center gap-10 px-6 py-12 sm:px-10 lg:px-12">
+    <main id="main-content" tabIndex={-1} className="mx-auto flex min-h-screen w-full max-w-7xl flex-1 flex-col items-center justify-center gap-10 px-6 py-12 sm:px-10 lg:px-12">
       <div className="w-full max-w-3xl text-center">
-        <p className="text-sm font-semibold uppercase tracking-[0.3em] text-amber-200">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#17665b]">
           Smart Academic Scheduler
         </p>
-        <h1 className="mt-4 font-serif text-5xl text-stone-50">
-          Role-aware access for academic operations
+        <h1 className="mt-4 text-4xl font-semibold tracking-[-.04em] text-stone-50 sm:text-5xl">
+          Plan a better week for your campus.
         </h1>
-        <p className="mt-4 text-base leading-8 text-stone-300">
-          This layer makes the product feel more real: operations users can manage and publish
-          schedules, while faculty and students are routed to the released timetable experience.
+        <p className="mx-auto mt-4 max-w-xl text-sm leading-6 text-stone-400">
+          Sign in to manage academic schedules or view the timetable published for your campus.
         </p>
         <div className="mt-6">
           <Link

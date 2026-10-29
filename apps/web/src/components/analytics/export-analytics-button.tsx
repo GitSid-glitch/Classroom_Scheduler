@@ -39,7 +39,7 @@ export function ExportAnalyticsButton({ analytics }: ExportAnalyticsButtonProps)
     <button
       type="button"
       onClick={handleExport}
-      className="rounded-full bg-sky-300 px-5 py-3 text-sm font-semibold text-stone-950 transition hover:bg-sky-200"
+      className="rounded-full bg-[#286477] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#215568] focus-visible:outline-offset-4"
     >
       Export analytics
     </button>

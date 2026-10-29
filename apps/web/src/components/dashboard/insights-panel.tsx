@@ -2,15 +2,16 @@ import type { SchedulingInsight } from "@/types/domain";
 
 interface InsightsPanelProps {
   insights: SchedulingInsight[];
+  available: boolean;
 }
 
 const severityStyles: Record<SchedulingInsight["severity"], string> = {
-  low: "border-sky-400/20 bg-sky-400/10 text-sky-100",
-  medium: "border-amber-300/20 bg-amber-300/10 text-amber-100",
-  high: "border-rose-400/20 bg-rose-400/10 text-rose-100",
+  low: "border-[#bdd9e6] bg-[#edf7fb] text-[#245366]",
+  medium: "border-[#e4d4a8] bg-[#fff8e6] text-[#624d1e]",
+  high: "border-[#e7c4c6] bg-[#fff1f1] text-[#742b35]",
 };
 
-export function InsightsPanel({ insights }: InsightsPanelProps) {
+export function InsightsPanel({ insights, available }: InsightsPanelProps) {
   return (
     <section className="rounded-[2rem] border border-stone-800 bg-stone-950 p-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -23,12 +24,18 @@ export function InsightsPanel({ insights }: InsightsPanelProps) {
           </h2>
         </div>
         <p className="max-w-xl text-sm leading-7 text-stone-400">
-          These are the kinds of issues a coordinator should see immediately after draft
-          generation instead of discovering them in spreadsheets later.
+          Conflicts found in the current room, faculty, and course inputs appear here for review.
         </p>
       </div>
 
       <div className="mt-6 grid gap-4">
+        {insights.length === 0 ? (
+          <div className="rounded-[1.25rem] border border-dashed border-stone-700 p-4 text-sm text-stone-400">
+            {available
+              ? "No input conflicts are currently reported. New conflicts will appear here after constraints change."
+              : "Conflict analysis is unavailable. Check the scheduling API connection and try again."}
+          </div>
+        ) : null}
         {insights.map((insight) => (
           <article
             key={insight.id}

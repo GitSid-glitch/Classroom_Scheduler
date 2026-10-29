@@ -22,8 +22,7 @@ export function RecentActivityPanel({ events }: RecentActivityPanelProps) {
           </h2>
         </div>
         <p className="max-w-xl text-sm leading-7 text-stone-400">
-          This gives the product a more real-world operations feel by showing when data and
-          schedule lifecycle events changed.
+          Recent changes to campus data and schedule publication are recorded here.
         </p>
       </div>
 

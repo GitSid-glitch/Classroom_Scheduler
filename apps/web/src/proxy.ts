@@ -9,11 +9,7 @@ import {
 
 const PUBLIC_PATHS = ["/", "/login"];
 
-export function middleware(request: NextRequest) {
-  return handleRequest(request);
-}
-
-async function handleRequest(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   if (
@@ -30,21 +26,20 @@ async function handleRequest(request: NextRequest) {
   const role = identity?.role;
 
   if (!role && !isPublicPath) {
-    const loginUrl = new URL("/login", request.url);
-    return NextResponse.redirect(loginUrl);
+    return NextResponse.redirect(new URL("/login", request.url));
   }
 
   if (role && pathname === "/login") {
-    const nextUrl = new URL(
-      role === "ADMIN" || role === "COORDINATOR" ? "/dashboard" : "/published-timetable",
-      request.url,
+    return NextResponse.redirect(
+      new URL(
+        role === "ADMIN" || role === "COORDINATOR" ? "/dashboard" : "/published-timetable",
+        request.url,
+      ),
     );
-    return NextResponse.redirect(nextUrl);
   }
 
   if (role && !isPublicPath && !canAccessPath(role, pathname)) {
-    const deniedUrl = new URL("/published-timetable", request.url);
-    return NextResponse.redirect(deniedUrl);
+    return NextResponse.redirect(new URL("/published-timetable", request.url));
   }
 
   return NextResponse.next();

@@ -14,7 +14,7 @@ export function MetricsGrid({ metrics }: MetricsGridProps) {
         >
           <p className="text-sm text-stone-400">{metric.label}</p>
           <p className="mt-3 text-3xl font-semibold text-stone-50">{metric.value}</p>
-          <p className="mt-2 text-sm text-emerald-300">{metric.change}</p>
+          <p className="mt-2 text-sm text-stone-400">{metric.change}</p>
         </article>
       ))}
     </div>

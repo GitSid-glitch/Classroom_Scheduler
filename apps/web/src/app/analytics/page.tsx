@@ -1,10 +1,14 @@
+import type { Metadata } from "next";
+
 import { ExportAnalyticsButton } from "@/components/analytics/export-analytics-button";
 import { AppShell } from "@/components/layout/app-shell";
 import { SchedulerApiClient } from "@/lib/api/scheduler-api-client";
 
 const apiClient = new SchedulerApiClient();
+export const metadata: Metadata = { title: "Analytics" };
 
 export default async function AnalyticsPage() {
+  let analyticsAvailable = true;
   let analytics = {
     room_utilization: [] as Array<{
       room_id: number;
@@ -28,7 +32,7 @@ export default async function AnalyticsPage() {
   try {
     analytics = await apiClient.getAnalytics();
   } catch {
-    // Keep the fallback analytics state.
+    analyticsAvailable = false;
   }
 
   return (
@@ -36,34 +40,39 @@ export default async function AnalyticsPage() {
       eyebrow="Analytics"
       title="Operational metrics for timetable quality"
       description="This is where the project starts to look like a real academic operations product: measurable coverage, room utilization, and faculty load instead of just a generated schedule."
-      actions={<ExportAnalyticsButton analytics={analytics} />}
+      actions={analyticsAvailable ? <ExportAnalyticsButton analytics={analytics} /> : undefined}
     >
+      {!analyticsAvailable ? (
+        <p role="status" className="card-surface border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+          Analytics could not be loaded. The service may be offline; refresh this page after reconnecting it. No placeholder totals are shown.
+        </p>
+      ) : null}
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <article className="rounded-[1.5rem] border border-white/10 bg-white/6 p-5 backdrop-blur">
           <p className="text-sm text-stone-400">Coverage Ratio</p>
           <p className="mt-3 text-3xl font-semibold text-stone-50">
-            {analytics.quality.coverage_ratio}%
+            {analyticsAvailable ? `${analytics.quality.coverage_ratio}%` : "—"}
           </p>
           <p className="mt-2 text-sm text-stone-300">Share of sessions successfully scheduled.</p>
         </article>
         <article className="rounded-[1.5rem] border border-white/10 bg-white/6 p-5 backdrop-blur">
           <p className="text-sm text-stone-400">Value Capture</p>
           <p className="mt-3 text-3xl font-semibold text-stone-50">
-            {analytics.quality.value_capture_ratio}%
+            {analyticsAvailable ? `${analytics.quality.value_capture_ratio}%` : "—"}
           </p>
           <p className="mt-2 text-sm text-stone-300">Academic priority captured by the draft.</p>
         </article>
         <article className="rounded-[1.5rem] border border-white/10 bg-white/6 p-5 backdrop-blur">
           <p className="text-sm text-stone-400">Scheduled Sessions</p>
           <p className="mt-3 text-3xl font-semibold text-stone-50">
-            {analytics.quality.scheduled_count}
+            {analyticsAvailable ? analytics.quality.scheduled_count : "—"}
           </p>
           <p className="mt-2 text-sm text-stone-300">Sessions placed into compatible rooms.</p>
         </article>
         <article className="rounded-[1.5rem] border border-white/10 bg-white/6 p-5 backdrop-blur">
           <p className="text-sm text-stone-400">Unscheduled Sessions</p>
           <p className="mt-3 text-3xl font-semibold text-stone-50">
-            {analytics.quality.unscheduled_count}
+            {analyticsAvailable ? analytics.quality.unscheduled_count : "—"}
           </p>
           <p className="mt-2 text-sm text-stone-300">Sessions needing follow-up or re-planning.</p>
         </article>
@@ -80,7 +89,7 @@ export default async function AnalyticsPage() {
               >
                 <div className="flex items-center justify-between gap-4">
                   <p className="text-sm font-semibold text-stone-50">{room.room_name}</p>
-                  <span className="text-sm text-emerald-300">{room.utilization_score}%</span>
+                  <span className="text-sm font-semibold text-[#17665b]">{room.utilization_score}%</span>
                 </div>
                 <p className="mt-2 text-sm text-stone-300">
                   Scheduled minutes: {room.scheduled_minutes}
@@ -100,7 +109,7 @@ export default async function AnalyticsPage() {
               >
                 <div className="flex items-center justify-between gap-4">
                   <p className="text-sm font-semibold text-stone-50">{teacher.teacher}</p>
-                  <span className="text-sm text-sky-300">
+                  <span className="text-sm font-semibold text-[#286477]">
                     {teacher.scheduled_sessions} sessions
                   </span>
                 </div>

@@ -9,7 +9,12 @@ export interface AuthIdentity {
 export const authSessionCookieName = "scheduler_session";
 
 function getSessionSecret() {
-  return process.env.AUTH_SESSION_SECRET ?? "development-session-secret";
+  const configuredSecret = process.env.AUTH_SESSION_SECRET;
+  if (configuredSecret) return configuredSecret;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("AUTH_SESSION_SECRET must be configured in production.");
+  }
+  return "local-development-only-change-before-deploy";
 }
 
 function toBase64Url(value: string) {
@@ -50,8 +55,14 @@ function decodePayload(value: string): AuthIdentity | null {
 }
 
 async function signPayload(payload: string) {
-  const data = new TextEncoder().encode(`${payload}.${getSessionSecret()}`);
-  const digest = await crypto.subtle.digest("SHA-256", data);
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(getSessionSecret()),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const digest = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payload));
 
   if (typeof Buffer !== "undefined") {
     return Buffer.from(digest).toString("base64url");
@@ -66,7 +77,10 @@ async function signPayload(payload: string) {
 }
 
 export async function createSignedSessionValue(identity: AuthIdentity) {
-  const payload = encodePayload(identity);
+  const payload = encodePayload({
+    ...identity,
+    expiresAt: Date.now() + 8 * 60 * 60 * 1000,
+  } as AuthIdentity);
   const signature = await signPayload(payload);
   return `${payload}.${signature}`;
 }
@@ -82,11 +96,28 @@ export async function readIdentityFromSessionValue(value: string | undefined) {
   }
 
   const expectedSignature = await signPayload(payload);
-  if (signature !== expectedSignature) {
+  if (signature.length !== expectedSignature.length) {
     return null;
   }
 
-  return decodePayload(payload);
+  let mismatch = 0;
+  for (let index = 0; index < signature.length; index += 1) {
+    mismatch |= signature.charCodeAt(index) ^ expectedSignature.charCodeAt(index);
+  }
+  if (mismatch !== 0) return null;
+
+  const identity = decodePayload(payload) as (AuthIdentity & { expiresAt?: number }) | null;
+  if (
+    !identity ||
+    !identity.username ||
+    !identity.displayName ||
+    !["ADMIN", "COORDINATOR", "FACULTY", "STUDENT"].includes(identity.role) ||
+    typeof identity.expiresAt !== "number" ||
+    identity.expiresAt <= Date.now()
+  ) {
+    return null;
+  }
+  return { username: identity.username, displayName: identity.displayName, role: identity.role };
 }
 
 export function canAccessPath(role: AppRole, pathname: string): boolean {

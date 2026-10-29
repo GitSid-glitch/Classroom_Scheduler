@@ -17,7 +17,7 @@ export function LogoutButton() {
     <button
       type="button"
       onClick={handleLogout}
-      className="rounded-full border border-stone-600 px-4 py-2 text-sm font-semibold text-stone-200 transition hover:border-stone-300 hover:bg-white/5"
+      className="rounded-full border border-[#dce6e1] bg-white px-3 py-2 text-xs font-semibold text-[#354b45] transition hover:bg-[#f4faf7] sm:px-4 sm:text-sm"
     >
       Logout
     </button>

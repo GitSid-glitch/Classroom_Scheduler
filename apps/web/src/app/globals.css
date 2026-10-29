@@ -1,36 +1,97 @@
 @import "tailwindcss";
 
 :root {
-  --background: #17110d;
-  --foreground: #f7f1ea;
+  --background: #f5f8f6;
+  --foreground: #142622;
+  --surface: #ffffff;
+  --surface-muted: #f7faf8;
+  --line: #e2eae6;
+  --brand: #17665b;
+  --brand-soft: #e7f3ef;
+  --muted: #5f7069;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-  --font-mono: "SFMono-Regular", "Consolas", "Liberation Mono", monospace;
+  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   --font-serif: Georgia, Cambria, "Times New Roman", Times, serif;
+  /* Re-map the original dark palette into a readable, restrained light UI. */
+  --color-stone-50: #142622;
+  --color-stone-100: #243a34;
+  --color-stone-200: #354b45;
+  --color-stone-300: #4f625c;
+  --color-stone-400: #62736c;
+  --color-stone-500: #5f7069;
+  --color-stone-600: #566860;
+  --color-stone-700: #3e554c;
+  --color-stone-800: #e7eeea;
+  --color-stone-900: #f3f7f4;
+  --color-stone-950: #ffffff;
+  --color-amber-100: #dceee8;
+  --color-amber-200: #17665b;
+  --color-amber-300: #17665b;
+  --color-amber-400: #14584f;
+  --color-sky-100: #315f70;
+  --color-sky-200: #286477;
 }
 
-html {
-  scroll-behavior: smooth;
-}
+html { scroll-behavior: smooth; }
 
 body {
+  min-height: 100vh;
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-  background:
-    radial-gradient(circle at top, rgba(245, 158, 11, 0.16), transparent 24%),
-    radial-gradient(circle at 20% 20%, rgba(14, 165, 233, 0.15), transparent 22%),
-    linear-gradient(180deg, #2a1914 0%, #17110d 38%, #0e0c0b 100%);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: var(--background);
+  background-image: radial-gradient(ellipse at 75% -20%, rgba(23, 102, 91, .075), transparent 38%);
 }
 
-body::selection {
-  background: rgba(252, 211, 77, 0.3);
+::selection { color: #10231e; background: #b9dfd3; }
+a, button { cursor: pointer; }
+button, input, select, textarea { font: inherit; }
+:focus-visible { outline: 3px solid rgba(23, 102, 91, .5); outline-offset: 3px; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
 }
 
-a,
-button {
-  cursor: pointer;
+/* Keep legacy page components visually consistent while their data workflows remain in place. */
+[class*="border-white/10"] { border-color: var(--line) !important; }
+[class*="border-stone-"] { border-color: var(--line); }
+[class*="bg-stone-950"] { box-shadow: 0 1px 2px rgba(25, 49, 40, .025), 0 10px 30px rgba(25, 49, 40, .035); }
+[class*="backdrop-blur"] { background-color: rgba(255, 255, 255, .82); }
+[class*="rounded-[2rem]"], [class*="rounded-[1.75rem]"], [class*="rounded-[1.5rem]"] { border-radius: 18px; }
+
+.app-layout { min-height: 100vh; }
+.app-sidebar { width: 248px; flex: 0 0 248px; }
+.app-nav-link { transition: background .16s ease, color .16s ease; }
+.app-nav-link:hover, .app-nav-link[data-active="true"] { color: #155d53; background: #eaf4f0; }
+.app-main { min-width: 0; flex: 1; }
+.app-page-content > section, .app-page-content > div { min-width: 0; }
+.card-surface { border: 1px solid var(--line); border-radius: 16px; background: var(--surface); box-shadow: 0 1px 2px rgba(25,49,40,.025), 0 10px 30px rgba(25,49,40,.035); }
+.btn-primary { background: var(--brand); color: white; transition: background .16s ease, transform .16s ease; }
+.btn-primary:hover { background: #12584e; transform: translateY(-1px); }
+.field-control { border: 1px solid var(--line); border-radius: 10px; background: white; color: var(--foreground); outline: none; }
+.field-control:focus { border-color: #70a89b; box-shadow: 0 0 0 3px rgba(23,102,91,.1); }
+.field-control:focus-visible { outline: 3px solid rgba(23,102,91,.72); outline-offset: 2px; }
+
+@media (max-width: 900px) {
+  .app-sidebar { position: relative !important; width: 100%; height: auto !important; flex: auto; }
+  .app-sidebar > div:nth-child(2), .app-sidebar > div:last-child { display: none !important; }
+  .app-sidebar .overflow-x-auto { overflow-x: auto; }
+  .app-sidebar .min-w-\[720px\] { min-width: max-content; }
+  .app-sidebar nav { display: flex; gap: 16px; padding: 9px 12px; }
+  .app-nav-group { flex: 0 0 auto; }
+  .app-nav-group-label { display: none; }
+  .app-nav-items { display: flex; gap: 3px; }
+  .app-nav-link { flex: 0 0 auto; white-space: nowrap; padding: 9px 11px; }
+  .app-nav-link > span:first-child { display: none; }
+  .app-main header { top: 0; }
 }
