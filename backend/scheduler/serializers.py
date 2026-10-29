@@ -55,10 +55,12 @@ class SectionSerializer(serializers.ModelSerializer):
 
 class UserProfileSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source="user.username", read_only=True)
+    teacher_name = serializers.CharField(source="teacher.name", read_only=True, allow_null=True)
+    section_name = serializers.CharField(source="section.name", read_only=True, allow_null=True)
 
     class Meta:
         model = UserProfile
-        fields = ["username", "display_name", "role"]
+        fields = ["username", "display_name", "role", "teacher_name", "section_name"]
 
 
 class ClassSessionSerializer(serializers.ModelSerializer):

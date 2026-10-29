@@ -10,6 +10,8 @@ const groups = [
     items: [
       { href: "/dashboard", label: "Overview", icon: "◫" },
       { href: "/published-timetable", label: "Timetable", icon: "▦" },
+      { href: "/portal/student", label: "Student portal", icon: "♧" },
+      { href: "/portal/faculty", label: "Faculty portal", icon: "♙" },
       { href: "/scheduler/run", label: "Scheduling", icon: "✳" },
       { href: "/scheduler/conflicts", label: "Conflict review", icon: "◇" },
     ],
@@ -39,6 +41,8 @@ export function AppNavigation({ role }: { role: AppRole | null }) {
     .map((group) => ({
       ...group,
       items: group.items.filter((item) => {
+        if (item.href === "/portal/student") return role === "STUDENT";
+        if (item.href === "/portal/faculty") return role === "FACULTY";
         if (item.href === "/published-timetable") return true;
         if (role === "ADMIN") return true;
         return role === "COORDINATOR" && group.label !== "Institution";

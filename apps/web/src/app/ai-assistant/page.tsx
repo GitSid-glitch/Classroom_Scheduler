@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { AppShell } from "@/components/layout/app-shell";
 import { AssistantPanels } from "@/components/ai/assistant-panels";
+import { AssistantRequestPlanner } from "@/components/ai/assistant-request-planner";
 import { SchedulerApiClient } from "@/lib/api/scheduler-api-client";
 import { AcademicRepository } from "@/lib/repositories/academic-repository";
 import type { ScheduleExplanation } from "@/types/domain";
@@ -61,6 +62,7 @@ export default async function AiAssistantPage() {
           Current explanation objects available from schedule runs: {explanationCount}
         </div>
       </section>
+      <AssistantRequestPlanner />
       <AssistantPanels
         source={source}
         model={model}

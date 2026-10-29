@@ -300,6 +300,8 @@ class UserProfile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="scheduler_profile")
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default=ROLE_COORDINATOR)
     display_name = models.CharField(max_length=120, blank=True, default="")
+    teacher = models.ForeignKey(Teacher, null=True, blank=True, on_delete=models.SET_NULL, related_name="user_profiles")
+    section = models.ForeignKey(Section, null=True, blank=True, on_delete=models.SET_NULL, related_name="user_profiles")
 
     def __str__(self):
         return self.display_name or self.user.get_full_name() or self.user.username

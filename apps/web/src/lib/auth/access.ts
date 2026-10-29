@@ -4,6 +4,8 @@ export interface AuthIdentity {
   username: string;
   displayName: string;
   role: AppRole;
+  assignedTeacher?: string | null;
+  assignedSection?: string | null;
 }
 
 export const authSessionCookieName = "scheduler_session";
@@ -117,10 +119,19 @@ export async function readIdentityFromSessionValue(value: string | undefined) {
   ) {
     return null;
   }
-  return { username: identity.username, displayName: identity.displayName, role: identity.role };
+  return {
+    username: identity.username,
+    displayName: identity.displayName,
+    role: identity.role,
+    assignedTeacher: typeof identity.assignedTeacher === "string" ? identity.assignedTeacher : null,
+    assignedSection: typeof identity.assignedSection === "string" ? identity.assignedSection : null,
+  };
 }
 
 export function canAccessPath(role: AppRole, pathname: string): boolean {
+  if (pathname === "/portal/student" || pathname.startsWith("/portal/student/")) return role === "STUDENT";
+  if (pathname === "/portal/faculty" || pathname.startsWith("/portal/faculty/")) return role === "FACULTY";
+
   if (pathname.startsWith("/setup")) {
     return role === "ADMIN";
   }

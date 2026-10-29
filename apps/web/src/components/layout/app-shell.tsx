@@ -23,12 +23,15 @@ export async function AppShell({ title, eyebrow, description, actions, children 
   ]);
   const displayName = identity?.displayName;
   const currentTerm = terms.find((term) => term.is_current);
+  const homeHref = identity?.role === "FACULTY"
+    ? "/portal/faculty"
+    : identity?.role === "STUDENT" ? "/portal/student" : "/dashboard";
 
   return (
     <div className="app-layout flex flex-col lg:flex-row">
       <aside className="app-sidebar sticky top-0 z-20 flex h-auto flex-col border-b border-stone-800 bg-white lg:h-screen lg:border-b-0 lg:border-r">
         <div className="flex items-center justify-between px-5 py-5 lg:px-6">
-          <Link href="/dashboard" className="flex items-center gap-3" aria-label="Smart Scheduler overview">
+          <Link href={homeHref} className="flex items-center gap-3" aria-label="Smart Scheduler home">
             <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#17665b] text-xs font-bold tracking-wide text-white shadow-sm">SS</span>
             <span className="block">
               <span className="block text-sm font-semibold tracking-tight text-stone-50">Smart Scheduler</span>
@@ -88,7 +91,7 @@ export async function AppShell({ title, eyebrow, description, actions, children 
           {children}
           <footer className="mt-2 flex flex-col gap-2 border-t border-stone-800 py-5 text-[11px] text-stone-400 sm:flex-row sm:items-center sm:justify-between">
             <span>Smart Scheduler · Academic operations workspace</span>
-            <span>Local-first demo · Rule-based scheduling intelligence</span>
+            <span>Constraint-aware scheduling · Groq request planning</span>
           </footer>
         </div>
       </main>

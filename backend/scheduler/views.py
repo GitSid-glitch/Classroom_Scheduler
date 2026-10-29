@@ -39,6 +39,7 @@ from .serializers import (
 )
 from scheduler.services.assistant_service import (
     build_assistant_payload,
+    extract_schedule_request,
     explain_unscheduled_session,
     suggest_conflict_resolution,
 )
@@ -907,6 +908,79 @@ class ScheduleViewSet(viewsets.ModelViewSet):
             payload["suggestion"] = suggest_conflict_resolution(schedule_result)
 
         return Response(payload, status=200)
+
+    @action(detail=False, methods=["post"])
+    def assistant_plan(self, request):
+        user_request = request.data.get("request", "")
+        if not isinstance(user_request, str) or not user_request.strip():
+            return Response({"error": "Describe the subjects and section you want to schedule."}, status=400)
+        if len(user_request) > 3000:
+            return Response({"error": "Keep schedule requests under 3,000 characters."}, status=400)
+
+        classes = list(ClassSession.objects.filter(term=get_current_academic_term()).select_related("section_record"))
+        if not classes:
+            return Response({"error": "Add course offerings before asking the assistant to build a schedule."}, status=400)
+
+        catalog = [
+            {"subject": item.subject, "section": item.batch, "teacher": item.teacher}
+            for item in classes
+        ]
+        try:
+            intent = extract_schedule_request(user_request.strip(), catalog)
+        except RuntimeError as exc:
+            return Response({"error": str(exc)}, status=503)
+        except Exception as exc:
+            from scheduler.services.assistant_service import _log_provider_fallback
+            _log_provider_fallback("Groq request extraction", exc)
+            return Response({"error": "Groq could not interpret this request. Check the configured model and try again."}, status=502)
+
+        requested_subjects = {value.casefold() for value in intent["subjects"]}
+        requested_section = intent["section"].strip().casefold()
+        matched = [
+            item for item in classes
+            if item.subject.casefold() in requested_subjects
+            and (not requested_section or item.batch.casefold() == requested_section)
+        ]
+        matched_subjects = {item.subject.casefold() for item in matched}
+        intent["unmatched_subjects"] = [name for name in intent["subjects"] if name.casefold() not in matched_subjects]
+        intent["matched_classes"] = [
+            {
+                "id": item.id,
+                "subject": item.subject,
+                "section": item.batch,
+                "teacher": item.teacher,
+                "day": item.day_of_week,
+                "start_time": item.start_time.isoformat(),
+                "end_time": item.end_time.isoformat(),
+                "locked": item.is_locked,
+            }
+            for item in matched
+        ]
+        intent["scheduling_note"] = (
+            "The draft uses the days and times configured on these course offerings. "
+            "Review or adjust those offering constraints before generating if you want different placements."
+        )
+        return Response(intent, status=200)
+
+    @action(detail=False, methods=["post"])
+    def run_request(self, request):
+        raw_ids = request.data.get("class_session_ids")
+        if not isinstance(raw_ids, list) or not raw_ids or len(raw_ids) > 100:
+            return Response({"error": "Select at least one course offering (up to 100)."}, status=400)
+        try:
+            session_ids = {int(value) for value in raw_ids}
+        except (TypeError, ValueError):
+            return Response({"error": "The selected course offering IDs are invalid."}, status=400)
+        classes = list(
+            ClassSession.objects.filter(term=get_current_academic_term(), id__in=session_ids)
+            .order_by("day_of_week", "start_time", "id")
+        )
+        if len(classes) != len(session_ids):
+            return Response({"error": "Some selected offerings are no longer available in the current term. Re-analyze the request."}, status=409)
+        rooms = list(Room.objects.prefetch_related("unavailable_windows").all())
+        schedule_result = self._build_live_schedule_result(classes, rooms)
+        name = str(request.data.get("name", "AI-assisted draft")).strip()[:100] or "AI-assisted draft"
+        return self._build_schedule_response(schedule_name=name, schedule_result=schedule_result)
 
     @action(detail=False, methods=["get"])
     def analytics(self, request):

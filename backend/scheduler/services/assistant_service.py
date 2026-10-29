@@ -97,6 +97,68 @@ def build_assistant_payload(schedule_result, target_explanation, explanations):
     }
 
 
+def extract_schedule_request(user_request, catalog):
+    """Extract user intent only; catalog matching and schedule writes stay server-side."""
+    api_key = os.environ.get("GROQ_API_KEY", "").strip()
+    if not api_key:
+        raise RuntimeError("Groq is not configured. Add GROQ_API_KEY to the API service environment.")
+
+    model = os.environ.get("GROQ_MODEL", DEFAULT_GROQ_MODEL).strip() or DEFAULT_GROQ_MODEL
+    client = _groq_client(api_key)
+    completion = client.chat.completions.create(
+        model=model,
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "Extract an academic schedule request into the requested JSON fields. "
+                    "Only extract stated preferences. Do not invent catalog items or IDs. "
+                    "Use day codes MON,TUE,WED,THU,FRI,SAT. Return JSON only."
+                ),
+            },
+            {
+                "role": "user",
+                "content": (
+                    f"Request: {user_request[:3000]}\n"
+                    f"Available catalog (reference only): {json.dumps(catalog[:100])}\n"
+                    "Return: subjects (array of subject names), section (one exact section name or empty), "
+                    "preferred_days (array of day codes), time_preference (any, morning, afternoon, evening), "
+                    "clarification (short string or empty)."
+                ),
+            },
+        ],
+        max_completion_tokens=500,
+        response_format={"type": "json_object"},
+    )
+    content = completion.choices[0].message.content
+    if not isinstance(content, str):
+        raise ValueError("Groq returned no schedule request data.")
+    result = json.loads(content)
+    if not isinstance(result, dict):
+        raise ValueError("Groq returned an invalid schedule request.")
+
+    subjects = result.get("subjects", [])
+    days = result.get("preferred_days", [])
+    valid_days = {"MON", "TUE", "WED", "THU", "FRI", "SAT"}
+    time_preference = result.get("time_preference", "any")
+    if not isinstance(subjects, list) or any(not isinstance(item, str) for item in subjects):
+        raise ValueError("Groq returned invalid subject names.")
+    if not isinstance(days, list) or any(not isinstance(day, str) or day.strip().upper() not in valid_days for day in days):
+        raise ValueError("Groq returned invalid preferred days.")
+    if time_preference not in {"any", "morning", "afternoon", "evening"}:
+        time_preference = "any"
+
+    return {
+        "subjects": list(dict.fromkeys(item.strip() for item in subjects if item.strip()))[:20],
+        "section": result.get("section", "") if isinstance(result.get("section", ""), str) else "",
+        "preferred_days": list(dict.fromkeys(day.strip().upper() for day in days)),
+        "time_preference": time_preference,
+        "clarification": result.get("clarification", "") if isinstance(result.get("clarification", ""), str) else "",
+        "source": "groq",
+        "model": model,
+    }
+
+
 def _log_provider_fallback(provider, exc):
     # Provider error bodies can contain request details; log only a status code
     # and machine-readable category so diagnostics never reveal keys, prompts,
@@ -175,11 +237,7 @@ def _request_groq_model(api_key, model, prompt):
     }
     # Keep requests on Groq's standard path: no paid Flex/performance tier,
     # hosted tools, or search options are requested.
-    client = Groq(
-        api_key=api_key,
-        timeout=12.0,
-        max_retries=0,
-    )
+    client = _groq_client(api_key)
     completion = client.chat.completions.create(
         model=model,
         messages=[
@@ -204,6 +262,12 @@ def _request_groq_model(api_key, model, prompt):
     if not isinstance(content, str):
         raise ValueError("Groq assistant returned no structured content.")
     return _parse_ai_result(content)
+
+
+def _groq_client(api_key):
+    from groq import Groq
+
+    return Groq(api_key=api_key, timeout=20.0, max_retries=0)
 
 
 def _parse_ai_result(content):

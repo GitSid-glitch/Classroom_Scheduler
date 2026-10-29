@@ -131,6 +131,8 @@ type ApiAuthIdentity = {
   username: string;
   display_name: string;
   role: AuthIdentity["role"];
+  teacher_name: string | null;
+  section_name: string | null;
 };
 
 type ApiAuditEvent = {
@@ -742,6 +744,8 @@ export class SchedulerApiClient {
       username: identity.username,
       displayName: identity.display_name,
       role: identity.role,
+      assignedTeacher: identity.teacher_name,
+      assignedSection: identity.section_name,
     };
   }
 

@@ -67,6 +67,9 @@ function isAllowed(role: AppRole, method: string, path: string[]) {
   if (["assistant", "analytics", "analyze"].includes(path[1])) {
     return method === "GET" && coordinatorRoles.includes(role);
   }
+  if (["assistant_plan", "run_request"].includes(path[1])) {
+    return method === "POST" && coordinatorRoles.includes(role);
+  }
   if (["run_optimized", "run_heap", "run_dp"].includes(path[1])) {
     return method === "POST" && coordinatorRoles.includes(role);
   }
@@ -156,7 +159,7 @@ async function handle(request: Request, context: RouteContext) {
       method,
       headers,
       body,
-      signal: AbortSignal.timeout(20_000),
+      signal: AbortSignal.timeout(30_000),
     });
 
     if (consumerRoles.includes(identity.role) && method === "GET") {

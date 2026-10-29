@@ -1,7 +1,7 @@
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
 
-from scheduler.models import UserProfile
+from scheduler.models import Section, Teacher, UserProfile
 
 
 DEMO_USERS = [
@@ -71,7 +71,9 @@ class Command(BaseCommand):
             profile = user.scheduler_profile
             profile.role = entry["role"]
             profile.display_name = f"{entry['first_name']} {entry['last_name']}"
-            profile.save(update_fields=["role", "display_name"])
+            profile.teacher = Teacher.objects.filter(name="Dr. Meera Roy").first() if entry["role"] == UserProfile.ROLE_FACULTY else None
+            profile.section = Section.objects.filter(name="B.Tech CSE 4A").first() if entry["role"] == UserProfile.ROLE_STUDENT else None
+            profile.save(update_fields=["role", "display_name", "teacher", "section"])
 
             self.stdout.write(
                 self.style.SUCCESS(

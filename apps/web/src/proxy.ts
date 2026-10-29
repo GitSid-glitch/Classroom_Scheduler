@@ -32,7 +32,9 @@ export async function proxy(request: NextRequest) {
   if (role && pathname === "/login") {
     return NextResponse.redirect(
       new URL(
-        role === "ADMIN" || role === "COORDINATOR" ? "/dashboard" : "/published-timetable",
+        role === "ADMIN" || role === "COORDINATOR"
+          ? "/dashboard"
+          : role === "FACULTY" ? "/portal/faculty" : "/portal/student",
         request.url,
       ),
     );
