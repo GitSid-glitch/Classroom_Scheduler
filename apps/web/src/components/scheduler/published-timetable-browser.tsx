@@ -24,20 +24,28 @@ type Scope = "section" | "teacher" | "room";
 
 const dayLabels: CourseOffering["dayCode"][] = ["MON", "TUE", "WED", "THU", "FRI", "SAT"];
 
+function displayTime(value: string) {
+  return value.slice(0, 5);
+}
+
 interface PublishedTimetableBrowserProps {
   schedules: ScheduleRunResponse[];
   offerings: CourseOffering[];
   rooms: Room[];
+  initialScope?: Scope;
+  initialQuery?: string;
 }
 
 export function PublishedTimetableBrowser({
   schedules,
   offerings,
   rooms,
+  initialScope = "section",
+  initialQuery = "",
 }: PublishedTimetableBrowserProps) {
   const [selectedScheduleId, setSelectedScheduleId] = useState(String(schedules[0]?.id ?? ""));
-  const [scope, setScope] = useState<Scope>("section");
-  const [query, setQuery] = useState("");
+  const [scope, setScope] = useState<Scope>(initialScope);
+  const [query, setQuery] = useState(initialQuery);
 
   const selectedSchedule = schedules.find((schedule) => String(schedule.id) === selectedScheduleId);
 
@@ -148,7 +156,10 @@ export function PublishedTimetableBrowser({
             <select
               className="rounded-2xl border border-stone-700 bg-stone-900 px-4 py-3 text-stone-50"
               value={scope}
-              onChange={(event) => setScope(event.target.value as Scope)}
+              onChange={(event) => {
+                setScope(event.target.value as Scope);
+                setQuery("");
+              }}
             >
               <option value="section">Section</option>
               <option value="teacher">Teacher</option>
@@ -219,7 +230,7 @@ export function PublishedTimetableBrowser({
                     <div>
                       <p className="text-base font-semibold text-stone-50">{entry.title}</p>
                       <p className="mt-1 text-sm text-stone-300">
-                        {entry.startTime} - {entry.endTime}
+                        {displayTime(entry.startTime)} - {displayTime(entry.endTime)}
                       </p>
                     </div>
                     <div className="text-sm text-stone-300">

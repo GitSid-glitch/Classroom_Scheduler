@@ -29,9 +29,10 @@ def _room_matches_features(room, cls):
     return required_features.issubset(room_features)
 
 
-def assign_rooms(day_classes, rooms):
+def assign_rooms(day_classes, rooms, reservations=None):
     sorted_classes = sorted(day_classes, key=lambda x: x.start_time)
     active_heap = []
+    reservations = reservations or []
 
     available_rooms = sorted(rooms, key=lambda r: r.capacity)
 
@@ -50,6 +51,19 @@ def assign_rooms(day_classes, rooms):
             candidate_rooms = [room for room in available_rooms if room.id == cls.fixed_room_id]
 
         for room in candidate_rooms:
+            locked_conflict = any(
+                reservation["room"] == room.id
+                and reservation["class"].day_of_week == cls.day_of_week
+                and _overlaps(
+                    reservation["class"].start_time,
+                    reservation["class"].end_time,
+                    cls.start_time,
+                    cls.end_time,
+                )
+                for reservation in reservations
+            )
+            if locked_conflict:
+                continue
             i = available_rooms.index(room)
             if room.capacity >= cls.required_capacity and (
                 cls.required_type == "ANY" or room.room_type == cls.required_type

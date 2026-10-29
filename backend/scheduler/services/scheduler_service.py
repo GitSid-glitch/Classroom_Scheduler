@@ -211,31 +211,76 @@ def run_dp_scheduler(classes, rooms):
 
 def run_optimized_scheduler(classes, rooms):
     classes_by_day = _group_classes_by_day(classes)
-    schedule_result = _run_day_aware_assignment(
-        classes_by_day,
-        rooms,
-        selector=weighted_interval_scheduling,
-    )
-
-    selected_ids = {assignment["class"].id for assignment in schedule_result["assignments"]}
-    rejected_by_optimizer = []
+    assignments = []
+    unscheduled = []
+    max_rooms = 0
 
     for day_classes in classes_by_day.values():
-        teacher_eligible_classes, _ = _filter_teacher_available(day_classes)
-        unlocked_classes = [
-            cls for cls in teacher_eligible_classes if not getattr(cls, "is_locked", False)
+        teacher_eligible, unavailable = _filter_teacher_available(day_classes)
+        locked = [cls for cls in teacher_eligible if getattr(cls, "is_locked", False)]
+        optional = [cls for cls in teacher_eligible if not getattr(cls, "is_locked", False)]
+
+        # Locked classes are anchors. For optional classes, resolve only actual
+        # teacher/section collisions; independent sections can run in parallel
+        # when the room allocator has enough compatible rooms.
+        accepted_locked, invalid_locked = _filter_conflicting_optionals(locked, [])
+        accepted_optional = []
+        rejected_optional = []
+        accepted = list(accepted_locked)
+        for cls in sorted(optional, key=lambda session: (-session.value, session.start_time, session.end_time)):
+            conflict = None
+            for reserved in accepted:
+                if not _sessions_overlap(cls, reserved):
+                    continue
+                if cls.teacher == reserved.teacher:
+                    conflict = "Teacher already has a locked or scheduled overlapping session."
+                    break
+                if cls.batch == reserved.batch:
+                    conflict = "Batch already has a locked or scheduled overlapping session."
+                    break
+            if conflict:
+                rejected_optional.append({"class": cls, "reason": conflict})
+            else:
+                accepted_optional.append(cls)
+                accepted.append(cls)
+
+        locked_assignments, _ = assign_rooms(accepted_locked, rooms)
+        optional_assignments, _ = assign_rooms(
+            accepted_optional,
+            rooms,
+            reservations=locked_assignments,
+        )
+        day_assignments = locked_assignments + optional_assignments
+        scheduled_ids = {item["class"].id for item in day_assignments}
+        room_rejections = [
+            {"class": cls, "reason": "No compatible room was available for this time slot."}
+            for cls in accepted_locked + accepted_optional
+            if cls.id not in scheduled_ids
         ]
-        chosen = weighted_interval_scheduling(unlocked_classes)
-        chosen_ids = {cls.id for cls in chosen}
 
-        for cls in unlocked_classes:
-            if cls.id not in chosen_ids and cls.id not in selected_ids:
-                rejected_by_optimizer.append(
-                    {
-                        "class": cls,
-                        "reason": "Skipped by the optimizer because it conflicted with higher-value sessions.",
-                    }
-                )
+        for assignment in day_assignments:
+            assignment["day_of_week"] = day_classes[0].day_of_week
+        assignments.extend(day_assignments)
+        unscheduled.extend(unavailable)
+        unscheduled.extend(invalid_locked)
+        unscheduled.extend(rejected_optional)
+        unscheduled.extend(room_rejections)
+        events = []
+        for assignment in day_assignments:
+            events.extend([
+                (assignment["class"].start_time, 1),
+                (assignment["class"].end_time, -1),
+            ])
+        active_rooms = peak_rooms = 0
+        for _, delta in sorted(events, key=lambda event: (event[0], event[1])):
+            active_rooms += delta
+            peak_rooms = max(peak_rooms, active_rooms)
+        max_rooms = max(max_rooms, peak_rooms)
 
-    schedule_result["unscheduled"].extend(rejected_by_optimizer)
-    return schedule_result
+    return {
+        "assignments": assignments,
+        "max_rooms": max_rooms,
+        "total_value": sum(item["class"].value for item in assignments),
+        "unscheduled": unscheduled,
+        "explanations": [],
+    }

@@ -25,6 +25,10 @@ function toMinutes(value: string) {
   return hours * 60 + minutes;
 }
 
+function displayTime(value: string) {
+  return value.slice(0, 5);
+}
+
 function buildTimeSlots(entries: WeeklyTimetableEntry[]) {
   const minutes = entries.flatMap((entry) => [toMinutes(entry.startTime), toMinutes(entry.endTime)]);
   const earliest = minutes.length > 0 ? Math.min(...minutes) : 9 * 60;
@@ -201,7 +205,7 @@ export function WeeklyTimetableGrid({
                                 >
                                   <p className="font-semibold">{entry.title}</p>
                                   {canMove ? <p className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-[#17665b]">Drag to move</p> : null}
-                                  <p className="mt-1 text-xs text-[#354b45]">{entry.startTime} - {entry.endTime}</p>
+                                  <p className="mt-1 text-xs text-[#354b45]">{displayTime(entry.startTime)} - {displayTime(entry.endTime)}</p>
                                   <p className="mt-2 text-xs text-[#354b45]">{entry.subtitle}</p>
                                   <p className="mt-1 text-xs text-[#43564f]">{entry.meta}</p>
                                   {canMove ? (
