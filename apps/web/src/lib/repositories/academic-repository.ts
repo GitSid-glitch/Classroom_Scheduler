@@ -1,4 +1,3 @@
-import { courseOfferings, rooms, sections, teachers } from "@/lib/mock-data/university";
 import { SchedulerApiClient } from "@/lib/api/scheduler-api-client";
 import type { CourseOffering, Room, Section, Teacher } from "@/types/domain";
 
@@ -11,37 +10,33 @@ export class AcademicRepository {
 
   public async getRooms(): Promise<Room[]> {
     try {
-      const payload = await this.apiClient.getRooms();
-      return payload.length > 0 ? payload : rooms;
+      return await this.apiClient.getRooms();
     } catch {
-      return rooms;
+      return [];
     }
   }
 
   public async getTeachers(): Promise<Teacher[]> {
     try {
-      const payload = await this.apiClient.getTeachers();
-      return payload.length > 0 ? payload : teachers;
+      return await this.apiClient.getTeachers();
     } catch {
-      return teachers;
+      return [];
     }
   }
 
   public async getSections(): Promise<Section[]> {
     try {
-      const payload = await this.apiClient.getSections();
-      return payload.length > 0 ? payload : sections;
+      return await this.apiClient.getSections();
     } catch {
-      return sections;
+      return [];
     }
   }
 
   public async getCourseOfferings(): Promise<CourseOffering[]> {
     try {
-      const payload = await this.apiClient.getCourseOfferings();
-      return payload.length > 0 ? payload : courseOfferings;
+      return await this.apiClient.getCourseOfferings();
     } catch {
-      return courseOfferings;
+      return [];
     }
   }
 }

@@ -96,8 +96,10 @@ export function SectionManager({ initialSections }: SectionManagerProps) {
         title="Import sections and cohort metadata from CSV"
         description="Bulk upload academic sections when each department already maintains a spreadsheet of cohorts. Existing sections are matched by section name and updated in place."
         expectedHeaders={["name", "program", "semester", "size"]}
-        onImportComplete={async (file) => {
-          const result = await apiClient.uploadSectionsCsv(file);
+        requiredHeaders={["name"]}
+        onImportComplete={async (file, dryRun, headerMapping) => {
+          const result = await apiClient.uploadSectionsCsv(file, dryRun, headerMapping);
+          if (dryRun) return `Validation passed: ${result.created} new sections and ${result.updated} existing sections would be updated. No records were changed.`;
           const refreshedSections = await apiClient.getSections();
           setSections(refreshedSections);
           resetForm();
@@ -159,7 +161,7 @@ export function SectionManager({ initialSections }: SectionManagerProps) {
             </label>
           </div>
 
-          {error ? <p className="text-sm text-rose-300">{error}</p> : null}
+          {error ? <p role="alert" className="text-sm text-rose-700">{error}</p> : null}
 
           <div className="flex flex-wrap gap-3">
             <button
@@ -210,7 +212,7 @@ export function SectionManager({ initialSections }: SectionManagerProps) {
                     type="button"
                     onClick={() => handleDelete(section.id)}
                     disabled={isPending}
-                    className="rounded-full border border-rose-400/40 px-4 py-2 text-sm font-semibold text-rose-200 transition hover:bg-rose-400/10 disabled:opacity-60"
+                    className="rounded-full border border-[#bd7a82] px-4 py-2 text-sm font-semibold text-[#8b1e2d] transition hover:bg-[#fff1f1] disabled:opacity-60"
                   >
                     Delete
                   </button>

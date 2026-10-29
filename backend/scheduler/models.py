@@ -1,8 +1,53 @@
-from django.db import models
+from django.db import models, transaction
 from django.core.exceptions import ValidationError
 from django.contrib.auth.models import User
+from django.db.models import Q
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+
+
+class AcademicTerm(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    starts_on = models.DateField(null=True, blank=True)
+    ends_on = models.DateField(null=True, blank=True)
+    is_current = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ("-is_current", "-starts_on", "name")
+        constraints = [
+            models.UniqueConstraint(
+                fields=("is_current",),
+                condition=Q(is_current=True),
+                name="one_current_academic_term",
+            ),
+        ]
+
+    def clean(self):
+        if self.starts_on and self.ends_on and self.ends_on < self.starts_on:
+            raise ValidationError({"ends_on": "End date must be on or after the start date."})
+
+    def save(self, *args, **kwargs):
+        if self.is_current:
+            with transaction.atomic():
+                type(self).objects.filter(is_current=True).exclude(pk=self.pk).update(is_current=False)
+                super().save(*args, **kwargs)
+            return
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.name
+
+
+def get_current_academic_term():
+    term = AcademicTerm.objects.filter(is_current=True).first()
+    if term:
+        return term
+    return AcademicTerm.objects.create(name="Current term", is_current=True)
+
+
+def get_current_academic_term_id():
+    return get_current_academic_term().pk
 
 
 class Room(models.Model):
@@ -72,6 +117,12 @@ class Section(models.Model):
 
 
 class ClassSession(models.Model):
+    term = models.ForeignKey(
+        AcademicTerm,
+        on_delete=models.PROTECT,
+        related_name="class_sessions",
+        default=get_current_academic_term_id,
+    )
     subject = models.CharField(max_length=100)
     teacher = models.CharField(max_length=100)
     batch = models.CharField(max_length=50)
@@ -148,6 +199,12 @@ class ClassSession(models.Model):
 
 
 class Schedule(models.Model):
+    term = models.ForeignKey(
+        AcademicTerm,
+        on_delete=models.PROTECT,
+        related_name="schedules",
+        default=get_current_academic_term_id,
+    )
     name = models.CharField(max_length=100, default="Auto schedule")
     created_at = models.DateTimeField(auto_now_add=True)
     max_value = models.IntegerField(default=0) 
@@ -156,11 +213,28 @@ class Schedule(models.Model):
         max_length=20,
         choices=(
             ("DRAFT", "Draft"),
+            ("PENDING_APPROVAL", "Pending approval"),
+            ("APPROVED", "Approved"),
+            ("REJECTED", "Changes requested"),
             ("PUBLISHED", "Published"),
+            ("SUPERSEDED", "Superseded"),
         ),
         default="DRAFT",
     )
     published_at = models.DateTimeField(null=True, blank=True)
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    approved_at = models.DateTimeField(null=True, blank=True)
+    reviewed_by = models.CharField(max_length=150, blank=True, default="")
+    approval_note = models.TextField(blank=True, default="")
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=("term",),
+                condition=Q(status="PUBLISHED"),
+                name="one_published_schedule_per_term",
+            ),
+        ]
 
     def __str__(self):
         return f"{self.name} @ {self.created_at}"
@@ -168,11 +242,31 @@ class Schedule(models.Model):
 
 class Assignment(models.Model):
     schedule = models.ForeignKey(Schedule, on_delete=models.CASCADE, related_name="assignments")
-    class_session = models.ForeignKey(ClassSession, on_delete=models.CASCADE, related_name="assignments")
-    room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name="assignments")
+    class_session = models.ForeignKey(ClassSession, on_delete=models.PROTECT, related_name="assignments")
+    room = models.ForeignKey(Room, on_delete=models.PROTECT, related_name="assignments")
+    subject_snapshot = models.CharField(max_length=100, blank=True, default="")
+    teacher_snapshot = models.CharField(max_length=100, blank=True, default="")
+    batch_snapshot = models.CharField(max_length=50, blank=True, default="")
+    day_of_week_snapshot = models.CharField(max_length=10, blank=True, default="")
+    start_time_snapshot = models.TimeField(null=True, blank=True)
+    end_time_snapshot = models.TimeField(null=True, blank=True)
+    room_name_snapshot = models.CharField(max_length=100, blank=True, default="")
 
     class Meta:
         unique_together = ("schedule", "class_session", "room")
+
+    def save(self, *args, **kwargs):
+        if self.class_session_id:
+            session = self.class_session
+            self.subject_snapshot = self.subject_snapshot or session.subject
+            self.teacher_snapshot = self.teacher_snapshot or session.teacher
+            self.batch_snapshot = self.batch_snapshot or session.batch
+            self.day_of_week_snapshot = self.day_of_week_snapshot or session.day_of_week
+            self.start_time_snapshot = self.start_time_snapshot or session.start_time
+            self.end_time_snapshot = self.end_time_snapshot or session.end_time
+        if self.room_id:
+            self.room_name_snapshot = self.room_name_snapshot or self.room.name
+        super().save(*args, **kwargs)
 
 
 class AuditEvent(models.Model):

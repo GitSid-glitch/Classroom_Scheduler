@@ -51,19 +51,19 @@ export function PublishedTimetableBrowser({
         const offering = offerings.find((item) => item.id === String(assignment.class_session));
         const room = rooms.find((item) => item.id === String(assignment.room));
 
-        if (!offering || !room) {
+        if ((!offering && !assignment.subject_snapshot) || (!room && !assignment.room_name_snapshot)) {
           return null;
         }
 
         return {
           assignmentId: assignment.id,
-          title: offering.title,
-          teacher: offering.teacherName ?? offering.teacherId,
-          section: offering.sectionName ?? offering.sectionId,
-          room: room.name,
-          dayCode: offering.dayCode,
-          startTime: offering.startTime,
-          endTime: offering.endTime,
+          title: assignment.subject_snapshot || offering?.title || "Class session",
+          teacher: assignment.teacher_snapshot || offering?.teacherName || offering?.teacherId || "Faculty",
+          section: assignment.batch_snapshot || offering?.sectionName || offering?.sectionId || "Section",
+          room: assignment.room_name_snapshot || room?.name || "Room",
+          dayCode: assignment.day_of_week_snapshot || offering?.dayCode || "MON",
+          startTime: assignment.start_time_snapshot || offering?.startTime || "09:00",
+          endTime: assignment.end_time_snapshot || offering?.endTime || "10:00",
         };
       })
       .filter((entry): entry is TimetableEntry => entry !== null)
@@ -107,6 +107,7 @@ export function PublishedTimetableBrowser({
         dayCode: entry.dayCode,
         startTime: entry.startTime,
         endTime: entry.endTime,
+        roomId: "",
       })),
     [filteredEntries],
   );
@@ -115,7 +116,7 @@ export function PublishedTimetableBrowser({
     <section className="rounded-[1.75rem] border border-stone-800 bg-stone-950 p-6">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.3em] text-emerald-200">
+          <p className="text-sm font-semibold uppercase tracking-[0.3em] text-[#17665b]">
             Published Access
           </p>
           <h2 className="mt-2 text-2xl font-semibold text-stone-50">

@@ -7,9 +7,9 @@ interface ConflictListProps {
 }
 
 const severityClasses = {
-  low: "border-sky-300/20 bg-sky-300/10 text-sky-100",
-  medium: "border-amber-300/20 bg-amber-300/10 text-amber-100",
-  high: "border-rose-400/20 bg-rose-400/10 text-rose-100",
+  low: "border-[#bdd9e6] bg-[#edf7fb] text-[#245366]",
+  medium: "border-[#e4d4a8] bg-[#fff8e6] text-[#624d1e]",
+  high: "border-[#e7c4c6] bg-[#fff1f1] text-[#742b35]",
 };
 
 export function ConflictList({ conflicts }: ConflictListProps) {
@@ -17,6 +17,11 @@ export function ConflictList({ conflicts }: ConflictListProps) {
     <section className="rounded-[1.75rem] border border-stone-800 bg-stone-950 p-6">
       <h2 className="text-2xl font-semibold text-stone-50">Conflict review queue</h2>
       <div className="mt-5 grid gap-4">
+        {conflicts.length === 0 ? (
+          <p role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+            No scheduling conflicts were found in the current term.
+          </p>
+        ) : null}
         {conflicts.map((conflict) => (
           <article
             key={conflict.title}

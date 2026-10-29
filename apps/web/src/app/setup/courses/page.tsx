@@ -1,9 +1,12 @@
+import type { Metadata } from "next";
+
 import { AppShell } from "@/components/layout/app-shell";
 import { CourseManager } from "@/components/setup/course-manager";
 import { SummaryCards } from "@/components/setup/summary-cards";
 import { AcademicRepository } from "@/lib/repositories/academic-repository";
 
 const repository = new AcademicRepository();
+export const metadata: Metadata = { title: "Course setup" };
 
 export default async function CoursesPage() {
   const offerings = await repository.getCourseOfferings();

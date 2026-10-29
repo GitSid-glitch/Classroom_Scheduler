@@ -1,9 +1,12 @@
+import type { Metadata } from "next";
+
 import { AppShell } from "@/components/layout/app-shell";
 import { RoomManager } from "@/components/setup/room-manager";
 import { SummaryCards } from "@/components/setup/summary-cards";
 import { AcademicRepository } from "@/lib/repositories/academic-repository";
 
 const repository = new AcademicRepository();
+export const metadata: Metadata = { title: "Room setup" };
 
 export default async function RoomsPage() {
   const rooms = await repository.getRooms();

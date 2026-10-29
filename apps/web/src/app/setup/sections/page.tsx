@@ -1,9 +1,12 @@
+import type { Metadata } from "next";
+
 import { AppShell } from "@/components/layout/app-shell";
 import { SummaryCards } from "@/components/setup/summary-cards";
 import { SectionManager } from "@/components/setup/section-manager";
 import { AcademicRepository } from "@/lib/repositories/academic-repository";
 
 const repository = new AcademicRepository();
+export const metadata: Metadata = { title: "Section setup" };
 
 export default async function SectionsPage() {
   const sections = await repository.getSections();

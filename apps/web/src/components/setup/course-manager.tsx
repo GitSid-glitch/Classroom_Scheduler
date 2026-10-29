@@ -169,8 +169,10 @@ export function CourseManager({ initialOfferings, teachers, sections }: CourseMa
           "is_locked",
           "required_features",
         ]}
-        onImportComplete={async (file) => {
-          const result = await apiClient.uploadCourseOfferingsCsv(file);
+        requiredHeaders={["subject", "teacher", "batch", "day_of_week", "start_time", "end_time"]}
+        onImportComplete={async (file, dryRun, headerMapping) => {
+          const result = await apiClient.uploadCourseOfferingsCsv(file, dryRun, headerMapping);
+          if (dryRun) return `Validation passed: ${result.created} new course sessions and ${result.updated} existing sessions would be updated. No records were changed.`;
           const refreshedOfferings = await apiClient.getCourseOfferings();
           setOfferings(refreshedOfferings);
           resetForm();
@@ -378,7 +380,7 @@ export function CourseManager({ initialOfferings, teachers, sections }: CourseMa
             Locked session
           </label>
 
-          {error ? <p className="text-sm text-rose-300">{error}</p> : null}
+          {error ? <p role="alert" className="text-sm text-rose-700">{error}</p> : null}
 
           <div className="flex flex-wrap gap-3">
             <button
@@ -439,7 +441,7 @@ export function CourseManager({ initialOfferings, teachers, sections }: CourseMa
                     type="button"
                     onClick={() => handleDelete(offering.id)}
                     disabled={isPending}
-                    className="rounded-full border border-rose-400/40 px-4 py-2 text-sm font-semibold text-rose-200 transition hover:bg-rose-400/10 disabled:opacity-60"
+                    className="rounded-full border border-[#bd7a82] px-4 py-2 text-sm font-semibold text-[#8b1e2d] transition hover:bg-[#fff1f1] disabled:opacity-60"
                   >
                     Delete
                   </button>

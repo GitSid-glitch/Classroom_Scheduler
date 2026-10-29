@@ -1,9 +1,12 @@
+import type { Metadata } from "next";
+
 import { AppShell } from "@/components/layout/app-shell";
 import { SummaryCards } from "@/components/setup/summary-cards";
 import { TeacherManager } from "@/components/setup/teacher-manager";
 import { AcademicRepository } from "@/lib/repositories/academic-repository";
 
 const repository = new AcademicRepository();
+export const metadata: Metadata = { title: "Faculty setup" };
 
 export default async function TeachersPage() {
   const teachers = await repository.getTeachers();

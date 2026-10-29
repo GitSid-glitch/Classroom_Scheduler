@@ -102,14 +102,13 @@ export function ManualOverridePanel({
       <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.3em] text-amber-200">
-            Manual Overrides
+            Course Constraints
           </p>
           <h2 className="mt-2 text-2xl font-semibold text-stone-50">
-            Lock, reslot, and pin a session to a room
+            Set constraints for future scheduling runs
           </h2>
           <p className="mt-2 max-w-3xl text-sm leading-7 text-stone-300">
-            This gives coordinators a controlled escape hatch when institutional context matters
-            more than a pure optimization run.
+            These changes update the source course session and affect future runs. To change an existing draft without changing its course setup, edit that draft from the dashboard release manager.
           </p>
         </div>
       </div>
@@ -202,8 +201,8 @@ export function ManualOverridePanel({
               Keep this session locked during future scheduling runs
             </label>
 
-            {message ? <p className="text-sm text-emerald-300">{message}</p> : null}
-            {error ? <p className="text-sm text-rose-300">{error}</p> : null}
+            {message ? <p role="status" className="text-sm text-emerald-800">{message}</p> : null}
+            {error ? <p role="alert" className="text-sm text-rose-700">{error}</p> : null}
 
             <button
               type="button"

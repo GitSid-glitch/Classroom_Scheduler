@@ -12,12 +12,17 @@ import type {
 
 export interface ScheduleRunResponse {
   id: number;
+  term: number;
   name: string;
   created_at: string;
   max_value: number;
   min_rooms: number;
-  status: "DRAFT" | "PUBLISHED";
+  status: "DRAFT" | "PENDING_APPROVAL" | "APPROVED" | "REJECTED" | "PUBLISHED" | "SUPERSEDED";
   published_at: string | null;
+  submitted_at: string | null;
+  approved_at: string | null;
+  reviewed_by: string;
+  approval_note: string;
   scheduled_class_ids: number[];
   unscheduled: Array<{
     class_session: number;
@@ -41,7 +46,41 @@ export interface ScheduleRunResponse {
     class_session: number;
     room: number;
     schedule: number;
+    subject_snapshot: string;
+    teacher_snapshot: string;
+    batch_snapshot: string;
+    day_of_week_snapshot: CourseOffering["dayCode"];
+    start_time_snapshot: string;
+    end_time_snapshot: string;
+    room_name_snapshot: string;
   }>;
+}
+
+export interface CsvImportResult {
+  dry_run: boolean;
+  created: number;
+  updated: number;
+  failed: number;
+  rows: number;
+}
+
+export class SchedulerApiError extends Error {
+  public readonly payload: unknown;
+
+  public constructor(message: string, payload: unknown) {
+    super(message);
+    this.name = "SchedulerApiError";
+    this.payload = payload;
+  }
+}
+
+export interface AcademicTerm {
+  id: number;
+  name: string;
+  starts_on: string | null;
+  ends_on: string | null;
+  is_current: boolean;
+  created_at: string;
 }
 
 type ApiRoom = {
@@ -54,6 +93,7 @@ type ApiRoom = {
 
 type ApiClassSession = {
   id: number;
+  term: number;
   subject: string;
   teacher: string;
   batch: string;
@@ -103,6 +143,27 @@ type ApiAuditEvent = {
   created_at: string;
 };
 
+function formatApiError(payload: unknown): string | null {
+  if (typeof payload === "string") return payload;
+  if (Array.isArray(payload)) {
+    return payload.map(formatApiError).filter((value): value is string => Boolean(value)).join(" · ") || null;
+  }
+  if (!payload || typeof payload !== "object") return null;
+
+  const entries = Object.entries(payload as Record<string, unknown>);
+  const preferred = entries.find(([key]) => key === "error" || key === "detail");
+  if (preferred) return formatApiError(preferred[1]);
+  return entries
+    .map(([field, value]) => {
+      const message = formatApiError(value);
+      if (!message) return null;
+      const label = field.replaceAll("_", " ");
+      return field === "non_field_errors" ? message : `${label}: ${message}`;
+    })
+    .filter((value): value is string => Boolean(value))
+    .join(" · ") || null;
+}
+
 export class SchedulerApiClient {
   private readonly config: AppConfig;
 
@@ -126,6 +187,48 @@ export class SchedulerApiClient {
         .filter(Boolean),
       isActive: true,
     }));
+  }
+
+  public async listAcademicTerms(): Promise<AcademicTerm[]> {
+    return this.request<AcademicTerm[]>("/academic-terms/");
+  }
+
+  public async createAcademicTerm(payload: {
+    name: string;
+    starts_on: string | null;
+    ends_on: string | null;
+  }): Promise<AcademicTerm> {
+    return this.request<AcademicTerm>("/academic-terms/", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  public async updateAcademicTerm(
+    termId: number,
+    payload: { name: string; starts_on: string | null; ends_on: string | null },
+  ): Promise<AcademicTerm> {
+    return this.request<AcademicTerm>(`/academic-terms/${termId}/`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  public async activateAcademicTerm(termId: number): Promise<AcademicTerm> {
+    return this.request<AcademicTerm>(`/academic-terms/${termId}/activate/`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+  }
+
+  public async copyAcademicTermCourses(
+    destinationTermId: number,
+    sourceTermId: number,
+  ): Promise<{ created: number; skipped: number; source: string; destination: string }> {
+    return this.request(`/academic-terms/${destinationTermId}/copy-courses/`, {
+      method: "POST",
+      body: JSON.stringify({ source_term_id: sourceTermId }),
+    });
   }
 
   public async createRoom(payload: {
@@ -175,9 +278,11 @@ export class SchedulerApiClient {
     });
   }
 
-  public async uploadRoomsCsv(file: File): Promise<{ created: number; updated: number; failed: number }> {
+  public async uploadRoomsCsv(file: File, dryRun = false, headerMapping?: Record<string, string>): Promise<CsvImportResult> {
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("dry_run", String(dryRun));
+    if (headerMapping) formData.append("header_mapping", JSON.stringify(headerMapping));
 
     return this.request("/rooms/upload/", {
       method: "POST",
@@ -284,9 +389,13 @@ export class SchedulerApiClient {
 
   public async uploadCourseOfferingsCsv(
     file: File,
-  ): Promise<{ created: number; updated: number; failed: number }> {
+    dryRun = false,
+    headerMapping?: Record<string, string>,
+  ): Promise<CsvImportResult> {
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("dry_run", String(dryRun));
+    if (headerMapping) formData.append("header_mapping", JSON.stringify(headerMapping));
 
     return this.request("/classes/upload/", {
       method: "POST",
@@ -312,6 +421,57 @@ export class SchedulerApiClient {
     });
   }
 
+  public async submitScheduleForApproval(scheduleId: number): Promise<ScheduleRunResponse> {
+    return this.request<ScheduleRunResponse>(`/schedules/${scheduleId}/submit_for_approval/`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+  }
+
+  public async approveSchedule(scheduleId: number, note = ""): Promise<ScheduleRunResponse> {
+    return this.request<ScheduleRunResponse>(`/schedules/${scheduleId}/approve/`, {
+      method: "POST",
+      body: JSON.stringify({ note }),
+    });
+  }
+
+  public async requestScheduleChanges(scheduleId: number, note: string): Promise<ScheduleRunResponse> {
+    return this.request<ScheduleRunResponse>(`/schedules/${scheduleId}/request_changes/`, {
+      method: "POST",
+      body: JSON.stringify({ note }),
+    });
+  }
+
+  public async reviseSchedule(scheduleId: number): Promise<ScheduleRunResponse> {
+    return this.request<ScheduleRunResponse>(`/schedules/${scheduleId}/revise/`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+  }
+
+  public async restoreSchedule(scheduleId: number): Promise<ScheduleRunResponse> {
+    return this.request<ScheduleRunResponse>(`/schedules/${scheduleId}/restore/`, {
+      method: "POST",
+      body: JSON.stringify({}),
+    });
+  }
+
+  public async moveScheduleAssignment(
+    scheduleId: number,
+    assignmentId: number,
+    placement: {
+      day_of_week: CourseOffering["dayCode"];
+      start_time: string;
+      end_time: string;
+      room: number;
+    },
+  ): Promise<ScheduleRunResponse> {
+    return this.request<ScheduleRunResponse>(`/schedules/${scheduleId}/move_assignment/`, {
+      method: "POST",
+      body: JSON.stringify({ assignment_id: assignmentId, ...placement }),
+    });
+  }
+
   public async unpublishSchedule(scheduleId: number): Promise<ScheduleRunResponse> {
     return this.request<ScheduleRunResponse>(`/schedules/${scheduleId}/unpublish/`, {
       method: "POST",
@@ -331,7 +491,7 @@ export class SchedulerApiClient {
   }
 
   public async getAssistantInsights(classSessionId?: string): Promise<{
-    source?: "rules" | "llm";
+    source?: "rules" | "groq";
     model?: string;
     suggestion: {
       title: string;
@@ -385,7 +545,7 @@ export class SchedulerApiClient {
   }
 
   public getScheduleExportUrl(scheduleId: number): string {
-    return `${this.config.backendBaseUrl}/schedules/${scheduleId}/export_csv/`;
+    return `/api/backend/schedules/${scheduleId}/export_csv/`;
   }
 
   public async getTeachers(): Promise<Teacher[]> {
@@ -480,9 +640,13 @@ export class SchedulerApiClient {
 
   public async uploadTeachersCsv(
     file: File,
-  ): Promise<{ created: number; updated: number; failed: number }> {
+    dryRun = false,
+    headerMapping?: Record<string, string>,
+  ): Promise<CsvImportResult> {
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("dry_run", String(dryRun));
+    if (headerMapping) formData.append("header_mapping", JSON.stringify(headerMapping));
 
     return this.request("/teachers/upload/", {
       method: "POST",
@@ -551,9 +715,13 @@ export class SchedulerApiClient {
 
   public async uploadSectionsCsv(
     file: File,
-  ): Promise<{ created: number; updated: number; failed: number }> {
+    dryRun = false,
+    headerMapping?: Record<string, string>,
+  ): Promise<CsvImportResult> {
     const formData = new FormData();
     formData.append("file", file);
+    formData.append("dry_run", String(dryRun));
+    if (headerMapping) formData.append("header_mapping", JSON.stringify(headerMapping));
 
     return this.request("/sections/upload/", {
       method: "POST",
@@ -578,15 +746,17 @@ export class SchedulerApiClient {
   }
 
   private async request<T>(path: string, init?: RequestInit): Promise<T> {
-    const headers =
-      init?.body instanceof FormData
-        ? { ...(init?.headers ?? {}) }
-        : {
-            "Content-Type": "application/json",
-            ...(init?.headers ?? {}),
-          };
+    const isBrowser = typeof window !== "undefined";
+    const headers = new Headers(init?.headers);
+    if (!(init?.body instanceof FormData) && !headers.has("Content-Type")) {
+      headers.set("Content-Type", "application/json");
+    }
+    if (!isBrowser && process.env.BACKEND_SERVICE_TOKEN) {
+      headers.set("X-Scheduler-Service-Token", process.env.BACKEND_SERVICE_TOKEN);
+    }
+    const baseUrl = isBrowser ? "/api/backend" : this.config.backendBaseUrl;
 
-    const response = await fetch(`${this.config.backendBaseUrl}${path}`, {
+    const response = await fetch(`${baseUrl}${path}`, {
       ...init,
       headers,
       cache: "no-store",
@@ -594,17 +764,15 @@ export class SchedulerApiClient {
 
     if (!response.ok) {
       let detail = `API request failed: ${response.status} ${response.statusText}`;
+      let payload: unknown = null;
 
       try {
-        const payload = (await response.json()) as { error?: string };
-        if (payload.error) {
-          detail = payload.error;
-        }
+        payload = (await response.json()) as unknown;
       } catch {
-        detail = `API request failed: ${response.status} ${response.statusText}`;
+        // Keep the status-based message when the API did not return JSON.
       }
-
-      throw new Error(detail);
+      detail = formatApiError(payload) ?? detail;
+      throw new SchedulerApiError(detail, payload);
     }
 
     if (response.status === 204) {

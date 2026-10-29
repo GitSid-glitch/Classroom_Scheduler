@@ -4,6 +4,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     AuthLoginView,
     AuditEventViewSet,
+    AcademicTermViewSet,
     HealthCheckView,
     RoomViewSet,
     TeacherViewSet,
@@ -14,6 +15,7 @@ from .views import (
 
 router = DefaultRouter()
 router.register(r"audit-events", AuditEventViewSet, basename="audit-event")
+router.register(r"academic-terms", AcademicTermViewSet, basename="academic-term")
 router.register(r"rooms", RoomViewSet, basename="room")
 router.register(r"teachers", TeacherViewSet, basename="teacher")
 router.register(r"sections", SectionViewSet, basename="section")

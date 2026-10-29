@@ -99,8 +99,10 @@ export function TeacherManager({ initialTeachers }: TeacherManagerProps) {
         title="Import faculty availability from CSV"
         description="Bulk upload faculty records from an academic planning spreadsheet. Existing teachers are matched by name so updates refresh department and availability metadata cleanly."
         expectedHeaders={["name", "department", "max_daily_load", "unavailable_days"]}
-        onImportComplete={async (file) => {
-          const result = await apiClient.uploadTeachersCsv(file);
+        requiredHeaders={["name"]}
+        onImportComplete={async (file, dryRun, headerMapping) => {
+          const result = await apiClient.uploadTeachersCsv(file, dryRun, headerMapping);
+          if (dryRun) return `Validation passed: ${result.created} new faculty and ${result.updated} existing faculty records would be updated. No records were changed.`;
           const refreshedTeachers = await apiClient.getTeachers();
           setTeachers(refreshedTeachers);
           resetForm();
@@ -161,7 +163,7 @@ export function TeacherManager({ initialTeachers }: TeacherManagerProps) {
             />
           </label>
 
-          {error ? <p className="text-sm text-rose-300">{error}</p> : null}
+          {error ? <p role="alert" className="text-sm text-rose-700">{error}</p> : null}
 
           <div className="flex flex-wrap gap-3">
             <button
@@ -217,7 +219,7 @@ export function TeacherManager({ initialTeachers }: TeacherManagerProps) {
                     type="button"
                     onClick={() => handleDelete(teacher.id)}
                     disabled={isPending}
-                    className="rounded-full border border-rose-400/40 px-4 py-2 text-sm font-semibold text-rose-200 transition hover:bg-rose-400/10 disabled:opacity-60"
+                    className="rounded-full border border-[#bd7a82] px-4 py-2 text-sm font-semibold text-[#8b1e2d] transition hover:bg-[#fff1f1] disabled:opacity-60"
                   >
                     Delete
                   </button>

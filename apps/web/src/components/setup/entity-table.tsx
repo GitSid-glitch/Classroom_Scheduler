@@ -28,11 +28,13 @@ export function EntityTable<T>({
 
       <div className="overflow-x-auto">
         <table className="min-w-full border-separate border-spacing-y-3">
+          <caption className="sr-only">{title}: {description}</caption>
           <thead>
             <tr>
               {columns.map((column) => (
                 <th
                   key={column.key}
+                  scope="col"
                   className="px-4 py-2 text-left text-xs font-semibold uppercase tracking-[0.2em] text-stone-500"
                 >
                   {column.header}
