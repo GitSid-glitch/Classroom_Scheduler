@@ -4,11 +4,21 @@ from django.contrib.auth.models import User
 from django.core.management import call_command
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.core.exceptions import ValidationError
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APIClient
 
-from scheduler.models import Assignment, ClassSession, Room, RoomUnavailableWindow, Schedule, Teacher, Section, UserProfile
+from scheduler.models import (
+    Assignment,
+    ClassSession,
+    Room,
+    RoomUnavailableWindow,
+    Schedule,
+    Section,
+    Teacher,
+    UserProfile,
+    get_current_academic_term,
+)
 from scheduler.services.assistant_service import (
     explain_unscheduled_session,
     suggest_conflict_resolution,
@@ -522,10 +532,30 @@ class SetupModelsTests(TestCase):
         self.assertEqual(section.size, 58)
 
 
-class CsvUploadApiTests(TestCase):
+TEST_SERVICE_TOKEN = "scheduler-test-service-token"
+
+
+class ServiceTokenAPITestCase(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls._service_token_override = override_settings(BACKEND_SERVICE_TOKEN=TEST_SERVICE_TOKEN)
+        cls._service_token_override.enable()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls._service_token_override.disable()
+        super().tearDownClass()
+
     def setUp(self):
         self.client = APIClient()
+        self.client.credentials(
+            HTTP_X_SCHEDULER_SERVICE_TOKEN=TEST_SERVICE_TOKEN,
+            HTTP_X_FORWARDED_PROTO="https",
+        )
 
+
+class CsvUploadApiTests(ServiceTokenAPITestCase):
     def test_room_upload_upserts_existing_records(self):
         Room.objects.create(name="A-101", capacity=40, room_type="THEORY", features="")
         upload = SimpleUploadedFile(
@@ -614,9 +644,7 @@ class CsvUploadApiTests(TestCase):
         self.assertEqual(audit_response.data[0]["action"], "CREATED")
 
 
-class AuthApiTests(TestCase):
-    def setUp(self):
-        self.client = APIClient()
+class AuthApiTests(ServiceTokenAPITestCase):
 
     def test_login_returns_user_role_payload(self):
         user = User.objects.create_user(
@@ -651,12 +679,16 @@ class AuthApiTests(TestCase):
         self.assertEqual(response.status_code, 401)
 
 
-class ScheduleAuditTests(TestCase):
-    def setUp(self):
-        self.client = APIClient()
+class ScheduleAuditTests(ServiceTokenAPITestCase):
 
     def test_publish_logs_schedule_audit_event(self):
-        schedule = Schedule.objects.create(name="Semester Draft", max_value=12, min_rooms=2)
+        schedule = Schedule.objects.create(
+            name="Semester Draft",
+            max_value=12,
+            min_rooms=2,
+            status="APPROVED",
+            approved_at=timezone.now(),
+        )
 
         response = self.client.post(f"/api/schedules/{schedule.id}/publish/")
 
@@ -698,7 +730,7 @@ class DemoWorkspaceCommandTests(TestCase):
         self.assertGreaterEqual(Section.objects.count(), 3)
         self.assertGreaterEqual(ClassSession.objects.count(), 8)
 
-        published_schedule = Schedule.objects.get(name="Spring 2026 Demo Schedule")
+        published_schedule = Schedule.objects.get(name=f"{get_current_academic_term().name} Demo Schedule")
         self.assertEqual(published_schedule.status, "PUBLISHED")
         self.assertIsNotNone(published_schedule.published_at)
         self.assertGreater(published_schedule.assignments.count(), 0)
