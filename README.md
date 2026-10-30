@@ -147,8 +147,8 @@ is available for database portability work. SQLite remains the default local
 setup.
 
 GitHub Actions checks web lint, TypeScript, and the production build, Django
-configuration and migration drift, and Docker Compose configuration on pushes
-and pull requests.
+configuration, migration drift and backend tests, and Docker Compose
+configuration on pushes and pull requests.
 
 ### 1. Backend
 

@@ -55,6 +55,13 @@ Next.js 16, React 19, TypeScript, Tailwind v4; Django REST and SQLite; Django pa
 
 Groq is the only optional AI provider. Live inference was verified with the configured model; deterministic rules remain available if the provider or free quota is unavailable.
 
+### Latest verification — 30 October 2026
+
+- The deployed AI request flow successfully used `openai/gpt-oss-120b` with the app's synthetic example, extracted its subjects and section, and matched the request to course offerings in the demo catalog.
+- The flow stopped at the review screen. Generating a schedule remains an explicit user action and creates a draft for review rather than publishing it.
+- Next.js lint and production build pass. GitHub Actions now runs the Django test suite; its tests cover the Groq response-to-catalog-to-draft path with a mocked model response, alongside the separate live inference check above.
+- The Render portfolio deployment continues to use synthetic demo records and an ephemeral free-tier SQLite database. Demo edits can reset when the API service restarts or redeploys.
+
 ## Advanced roadmap (free-tier friendly)
 
 1. UX: responsive workspace shell, weekly timetable, command/search entry, filters, accessible forms, loading/empty/error states, and polished conflict review.

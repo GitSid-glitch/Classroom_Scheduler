@@ -1,4 +1,5 @@
 from datetime import time
+from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.core.management import call_command
@@ -677,6 +678,66 @@ class AuthApiTests(ServiceTokenAPITestCase):
         )
 
         self.assertEqual(response.status_code, 401)
+
+
+class AssistantRequestApiTests(ServiceTokenAPITestCase):
+    def setUp(self):
+        super().setUp()
+        self.teacher = Teacher.objects.create(name="Prof. Arjun Sen")
+        self.section = Section.objects.create(
+            name="B.Tech CSE 4A",
+            program="B.Tech CSE",
+            semester=4,
+            size=60,
+        )
+        self.room = Room.objects.create(name="A-101", capacity=60, room_type="THEORY", features="projector")
+        self.session = ClassSession.objects.create(
+            subject="Operating Systems",
+            teacher_record=self.teacher,
+            section_record=self.section,
+            day_of_week="MON",
+            start_time=time(10, 0),
+            end_time=time(11, 0),
+            required_capacity=60,
+            required_type="THEORY",
+            value=8,
+            required_features="projector",
+        )
+
+    @patch("scheduler.views.extract_schedule_request")
+    def test_groq_request_matches_catalog_and_builds_a_draft(self, extract_request):
+        extract_request.return_value = {
+            "subjects": ["Operating Systems"],
+            "section": "B.Tech CSE 4A",
+            "preferred_days": ["MON"],
+            "time_preference": "morning",
+            "clarification": "",
+            "source": "groq",
+            "model": "openai/gpt-oss-120b",
+        }
+
+        extraction = self.client.post(
+            "/api/schedules/assistant_plan/",
+            {"request": "Create a Monday morning timetable for Operating Systems in B.Tech CSE 4A."},
+            format="json",
+        )
+
+        self.assertEqual(extraction.status_code, 200)
+        self.assertEqual(extraction.data["source"], "groq")
+        self.assertEqual(extraction.data["model"], "openai/gpt-oss-120b")
+        self.assertEqual(extraction.data["matched_classes"][0]["id"], self.session.id)
+        extract_request.assert_called_once()
+
+        generated = self.client.post(
+            "/api/schedules/run_request/",
+            {"class_session_ids": [self.session.id]},
+            format="json",
+        )
+
+        self.assertEqual(generated.status_code, 201)
+        self.assertEqual(generated.data["status"], "DRAFT")
+        self.assertEqual(generated.data["assignments"][0]["class_session"], self.session.id)
+        self.assertEqual(Schedule.objects.get(pk=generated.data["id"]).assignments.count(), 1)
 
 
 class ScheduleAuditTests(ServiceTokenAPITestCase):
